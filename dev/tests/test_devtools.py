@@ -193,6 +193,21 @@ class VmToolTests(unittest.TestCase):
         (cls.vm.CACHE / "python-3.12.10-amd64.exe").write_bytes(b"MZ-fake")
         (cls.vm.CACHE / "sing-box-1.99.0-windows-amd64.zip").write_bytes(b"PK-fake")
 
+    def test_clixml_keeps_host_text_and_errors(self):
+        info = ('<Obj S="information" RefId="0"><TN RefId="0"><T>X</T></TN><ToString>PASS  a &lt;b&gt;</ToString><Props>'
+                '<Obj N="MessageData" RefId="1"><Props><S N="Message">PASS  a &lt;b&gt;</S><B N="NoNewLine">false</B>'
+                '</Props></Obj><S N="Source">x.ps1</S></Props></Obj>')
+        err = '<S S="Error">boom_x000D__x000A_</S>'
+        raw = ("plain line\n#< CLIXML\n<Objs Version=\"1.1.0.1\">" + info + err + info.replace("PASS  a", "CLEAN RESULT: PASS  a")
+               + "</Objs>")
+        out = self.vm.clean_clixml(raw)
+        self.assertIn("plain line", out)
+        self.assertIn("PASS  a <b>\n", out)
+        self.assertIn("boom\n", out)
+        self.assertIn("CLEAN RESULT: PASS", out)
+        self.assertNotIn("<Obj", out)
+        self.assertNotIn("CLIXML", out)
+
     def test_addresses_from_virsh(self):
         self.assertEqual(self.vm.vm_ip(), "192.168.122.57")
         self.assertEqual(self.vm.host_ip(), "192.168.122.1")

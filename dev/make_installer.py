@@ -7,9 +7,9 @@ Build dist/ChainProxy-Setup-<version>.exe (Inno Setup) in the Windows test VM.
 
 --full takes the files from dev/vm/cache (make vm-fetch: version and signature/hash checked).
 
-Needs the VM (see dev/README.md) with Inno Setup 6 installed for the test user
-(https://github.com/jrsoftware/issrc/releases, `innosetup-6.x.exe /VERYSILENT /CURRENTUSER`;
-verify its Authenticode signature first). The installer is unsigned: SmartScreen warns on it.
+Needs the VM (see dev/README.md). Inno Setup 6 is downloaded into the VM when it is missing
+(official GitHub release, installed only if its Authenticode signature is valid; `make vm-clean`
+removes it again). The installer itself is unsigned: SmartScreen warns on it.
 """
 import io
 import shutil
@@ -24,6 +24,7 @@ sys.path.insert(0, str(ROOT / "dev" / "vm"))
 import package   # noqa: E402
 import vmtest    # noqa: E402
 
+INNO_URL = "https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe"
 WORK = "chainproxy-installer"        # under the VM user's home
 
 
@@ -50,7 +51,14 @@ def main():
     rc, out = vmtest.ps(f'''
 $ErrorActionPreference = "Stop"
 $iscc = "$env:LOCALAPPDATA\\Programs\\Inno Setup 6\\ISCC.exe"
-if (-not (Test-Path $iscc)) {{ throw "Inno Setup 6 is not installed in the VM (see dev/make_installer.py)" }}
+if (-not (Test-Path $iscc)) {{
+    $f = "$env:TEMP\\innosetup.exe"
+    Invoke-WebRequest -UseBasicParsing "{INNO_URL}" -OutFile $f
+    $sig = Get-AuthenticodeSignature $f
+    if ($sig.Status -ne "Valid") {{ throw "Inno Setup download has no valid signature ($($sig.Status))" }}
+    Start-Process $f -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/CURRENTUSER" -Wait
+    if (-not (Test-Path $iscc)) {{ throw "Inno Setup did not install" }}
+}}
 $w = "$HOME\\{WORK}"
 if (Test-Path $w) {{ Remove-Item -Recurse -Force $w }}
 New-Item -ItemType Directory -Force $w | Out-Null

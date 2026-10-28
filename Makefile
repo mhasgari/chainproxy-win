@@ -6,7 +6,7 @@ XVFB    := $(shell command -v xvfb-run 2>/dev/null)
 .DEFAULT_GOAL := help
 .PHONY: help test test-gui test-dev lint check e2e-local package pdf installer clean \
         vm-doctor vm-fetch vm-bootstrap vm-snapshot vm-revert vm-deploy vm-install \
-        vm-unit vm-e2e vm-gui vm-all vm-all-clean vm-shell vm-screenshot vm-logs
+        vm-unit vm-e2e vm-gui vm-clean vm-clean-light vm-installer vm-installer-full vm-all vm-all-clean vm-shell vm-screenshot vm-logs
 
 help:                ## show this help
 	@grep -hE '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | sed -E 's/:.*## /\t/' | expand -t 18
@@ -69,6 +69,18 @@ vm-e2e:              ## real chain against the host lab + registry checks
 	$(VMTEST) e2e
 vm-gui:              ## GUI on the VM desktop + screenshots
 	$(VMTEST) gui
+vm-clean:            ## remove EVERYTHING the project put into the VM (Python, Inno Setup too)
+	$(VMTEST) clean
+
+vm-clean-light:      ## same, but keep Python and Inno Setup
+	$(VMTEST) clean --keep-tools
+
+vm-installer:        ## test dist/ChainProxy-Setup-<ver>.exe in the VM (first run, upgrade, uninstall)
+	$(VMTEST) installer
+
+vm-installer-full:   ## test the Full installer (Python + sing-box inside)
+	$(VMTEST) installer --full
+
 vm-all:              ## deploy, install, unit, e2e, gui
 	$(VMTEST) all
 vm-all-clean:        ## same, starting from the clean snapshot

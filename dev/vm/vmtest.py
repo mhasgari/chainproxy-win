@@ -278,7 +278,13 @@ def remote_dir():
 def clean_clixml(text):
     """Remove PowerShell's serialized-stream XML from ssh output, keeping error messages."""
     def errors(m):
-        msgs = re.findall(r'<S S="Error">(.*?)</S>', m.group(0), re.S)
+        # error records AND Write-Host text (PowerShell serializes late host output as
+        # InformationRecords too: dropping them lost the last PASS lines of a stage)
+        found = re.findall(r'<S S="Error">(.*?)</S>|<Obj S="information"[^>]*>.*?<S N="Message">(.*?)</S>',
+                           m.group(0), re.S)
+        msgs = []
+        for err, info in found:
+            msgs.append(err if err else info + "\n")
         msgs = [x.replace("_x000D__x000A_", "\n").replace("&lt;", "<").replace("&gt;", ">")
                  .replace("&quot;", '"').replace("&amp;", "&") for x in msgs]
         return "".join(msgs)
@@ -942,6 +948,41 @@ def cmd_ps(a):
     return rc
 
 
+def run_guest_script(name, **params):
+    """Run dev/vm/guest/<name>.ps1 in the VM without deploying anything (its text is sent over ssh)."""
+    text = (ROOT / "dev" / "vm" / "guest" / name).read_text(encoding="ascii")
+    args = " ".join(f"-{k} ${str(v).lower()}" if isinstance(v, bool) else f"-{k} '{v}'" for k, v in params.items())
+    return ps("& {\n" + text + "\n} " + args, stream=True, log=artifacts() / (name.replace(".ps1", "") + ".log"),
+              timeout=1800)
+
+
+def cmd_clean(a):
+    """Remove everything the project put into the VM (see dev/vm/guest/clean.ps1)."""
+    need("VM_NAME", "WIN_USER")
+    vm_start()
+    if not wait_ssh(300):
+        die("VM not reachable over ssh (vmtest.py doctor)")
+    rc, _ = run_guest_script("clean.ps1", Full=not a.keep_tools)
+    return rc
+
+
+def cmd_installer(a):
+    """Install / first run / upgrade / uninstall with a built installer (dist/ChainProxy-Setup*.exe)."""
+    need("VM_NAME", "WIN_USER")
+    full = a.full
+    name = next((p.name for p in sorted((ROOT / "dist").glob("ChainProxy-Setup-Full-*.exe" if full else "ChainProxy-Setup-[0-9]*.exe"))[-1:]), None)
+    if not name:
+        die("no installer in dist/: run `make installer` first")
+    vm_start()
+    if not wait_ssh(300):
+        die("VM not reachable over ssh (vmtest.py doctor)")
+    say(f"copying {name} to the VM")
+    scp_to(ROOT / "dist" / name, name)
+    rc, out = run_guest_script("installer-test.ps1", Setup=name, Full=full)
+    return summarize([{"stage": "installer" + ("-full" if full else ""), "result": "PASS" if rc == 0 else "FAIL",
+                       "seconds": 0}])
+
+
 def cmd_screenshot(_a):
     need("VM_NAME")
     return 0 if screenshot(time.strftime("screen-%H%M%S")) else 1
@@ -949,7 +990,7 @@ def cmd_screenshot(_a):
 
 def cmd_pull_logs(_a):
     need("VM_NAME", "WIN_USER")
-    for f in ("runtime/core.log", "runtime/config.json", "runtime/e2e-serve.log", "subs.txt", "config.json"):
+    for f in ("runtime/core.log", "runtime/config.json", "runtime/e2e-serve.log", "config.json"):   # never subs.txt
         dest = artifacts() / Path(f).name
         say(("  got   " if scp_from(f"{CONF['REMOTE_DIR']}/repo/{f}", dest) else "  none  ") + f)
     say(f"saved to {artifacts().relative_to(ROOT)}")
@@ -1078,6 +1119,10 @@ def main():
     al.add_argument("--clean", action="store_true", help="revert to the snapshot first")
     al.add_argument("--online", action="store_true", help="let the VM download Python/sing-box itself")
     al.add_argument("--skip-gui", action="store_true")
+    cl = sub.add_parser("clean")
+    cl.add_argument("--keep-tools", action="store_true", help="keep Python and Inno Setup (faster next run)")
+    ins = sub.add_parser("installer")
+    ins.add_argument("--full", action="store_true", help="test the Full installer (Python + sing-box inside)")
     sub.add_parser("shell")
     p = sub.add_parser("ps")
     p.add_argument("command")
@@ -1088,7 +1133,7 @@ def main():
     handlers = {"doctor": cmd_doctor, "fetch": cmd_fetch, "bootstrap": cmd_bootstrap,
                 "snapshot": cmd_snapshot, "revert": cmd_revert, "deploy": cmd_deploy,
                 "all": cmd_all, "shell": cmd_shell, "ps": cmd_ps, "screenshot": cmd_screenshot,
-                "pull-logs": cmd_pull_logs}
+                "pull-logs": cmd_pull_logs, "clean": cmd_clean, "installer": cmd_installer}
     handlers.update({n: cmd_stage for n in STAGES})
     return handlers[a.cmd](a) or 0
 

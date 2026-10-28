@@ -129,6 +129,11 @@ claude
 | `make vm-shell` | PowerShell تعاملی داخل VM | |
 | `make vm-screenshot`, `make vm-logs` | اسکرین‌شات و لاگ‌های VM | |
 | `make package` | zip نسخه‌ی کاربر در `dist/` | |
+| `make pdf` | ساخت PDF راهنمای سریع از `docs/QUICKSTART.md` (pandoc + chromium روی میزبان) | چند ثانیه |
+| `make installer` | ساخت دو نصب‌کننده‌ی `dist/ChainProxy-Setup-<ver>.exe` و `...-Full-...` با Inno Setup **داخل VM** (اگر نباشد با بررسی امضا خودش نصب می‌شود) | ~۲ دقیقه |
+| `make vm-installer` / `make vm-installer-full` | آزمون نصب‌کننده در VM: نصب، اجرای اول (`setup.ps1`، Python، sing-box)، ارتقا (حفظ `subs.txt`)، حذف | ۱ تا ۳ دقیقه |
+| `make vm-clean` | **همه‌ی آثار پروژه را از VM پاک می‌کند** (کپی تست، برنامه‌ی نصب‌شده، نصب‌کننده‌ها، میانبرها، Python و Inno Setup، تنظیم پروکسی). OpenSSH/sshd، کلید، autologon و کاربر دست‌نخورده می‌مانند | ~۱ دقیقه |
+| `make vm-clean-light` | همان ولی Python و Inno Setup می‌مانند (چرخه‌ی سریع‌تر) | ~۳۰ ثانیه |
 
 گزینه‌های `vmtest.py`:
 - `--online`: نصب‌کننده‌ها را نفرست تا VM خودش دانلود کند.
@@ -137,6 +142,15 @@ claude
 - `all --clean`
 
 هر تنظیم `vm.conf` را می‌توان با متغیر محیطی جایگزین کرد، مثلاً `VM_NAME=win10 make vm-all`.
+
+### حلقه‌ی توسعه و تست سریع
+روی میزبان کد را عوض کنید و:
+1. `make test` (۱۰ ثانیه) و برای کار روی config یا پنجره `make check`.
+2. چیزهایی که فقط روی ویندوز معنا دارند: `make vm-deploy vm-unit` (~۱ دقیقه)، یا مرحله‌ی مربوطه (`vm-gui`، `vm-e2e`). `vm-deploy` هر بار کل درخت کار را می‌فرستد و `chain.py off` و فرایندهای قبلی را می‌بندد.
+3. پیش از انتشار: `make vm-all`، بعد `make pdf package installer`، `make vm-installer vm-installer-full` (روی VM تمیز: اول `make vm-clean`).
+4. تست نصب از صفر (مثل کاربر): `make vm-clean` ← `make vm-installer-full` (یا `vm-installer`، که Python و sing-box را از اینترنت می‌گیرد). بعد از آن دوباره `make vm-clean` تا VM تمیز بماند.
+
+برای تست دستی با اشتراک‌های واقعی: `make vm-deploy` (فایل `subs.txt` میزبان همراه می‌رود؛ `vm-all` آن را با لینک‌های lab بازنویسی می‌کند)، سپس `python3 dev/vm/vmtest.py ps "..."` یا `make vm-shell`.
 
 ### خروجی‌ها
 `dev/artifacts/vm-latest/` به آخرین اجرا اشاره دارد و این فایل‌ها را دارد:

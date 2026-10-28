@@ -31,6 +31,7 @@ VM -> A -> B1) and gui all PASS. Real subscriptions were run once by hand in the
 - `python3 dev/vm/vmtest.py ps "<PowerShell>"` - run one command in the VM
 - results: `dev/artifacts/vm-latest/` (summary.json, *.log, gui-*.png, lab evidence)
 - `make installer` / `python3 dev/make_installer.py` - builds `dist/ChainProxy-Setup-<ver>.exe` with Inno Setup 6 INSIDE the VM (installer/chainproxy.iss; Inno comes from github.com/jrsoftware/issrc releases, check its signature). `make pdf` rebuilds the quick-start PDF; rebuild BEFORE the zip/installer.
+- `make vm-clean` - removes EVERYTHING the project put into the VM (test copy, installed app, installers, shortcuts, Python, Inno Setup, proxy settings; keeps sshd/key/autologon). `make vm-clean-light` keeps Python + Inno. `make vm-installer` / `vm-installer-full` test a built installer (install, first run, upgrade, uninstall); run `vm-clean` first for a true clean-machine test and again afterwards.
 - `/vm-test`, `/check`, `/release` slash commands wrap the above
 
 ## When to test where
