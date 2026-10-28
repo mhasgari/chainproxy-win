@@ -51,6 +51,7 @@ def client_config(lab_port, **extra):
         "check_urls": [f"{base}/generate_204"],
         "geo_url": f"{base}/geo",
         "strict_urls": [f"{base}/strict"],
+        "geo_fallback_urls": [],
         "blocked_countries": ["IR"],
         "direct_suffixes": [],
         "private_direct": False,

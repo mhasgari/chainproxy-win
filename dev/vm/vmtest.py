@@ -312,9 +312,20 @@ def ps(script, check=False, timeout=None, stream=False, log=None):
     buf = []
     lf = open(log, "a", encoding="utf-8") if log else None
     start = time.time()
+    pending = ""                                # an <Objs> block that is still open
     try:
         for raw in iter(p.stdout.readline, b""):
             line = raw.decode("utf-8", "replace").replace("\r", "")
+            if pending or "<Objs" in line:
+                pending += line
+                if "</Objs>" not in pending:
+                    continue
+                line, pending = clean_clixml(pending), ""
+                if not line.strip():
+                    continue
+                line = line if line.endswith("\n") else line + "\n"
+            elif line.startswith("#< CLIXML"):
+                continue
             buf.append(line)
             color = "g" if line.startswith("PASS") else "r" if line.startswith("FAIL") else None
             sys.stdout.write(f"{C[color]}{line}{C['0']}" if color else line)

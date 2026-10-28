@@ -10,6 +10,13 @@ from tkinter import messagebox, ttk
 import chain
 
 
+def clean(text):
+    """Tk 8.6 on Windows cannot draw characters above U+FFFF (emoji, flags): drop them and the
+    joiners that go with them instead of showing empty boxes."""
+    out = "".join(c for c in text if ord(c) <= 0xFFFF and c not in "\ufe0f\u200d\u200b")
+    return " ".join(out.split())
+
+
 class GUI:
     def __init__(self, root):
         self.root = root
@@ -19,8 +26,8 @@ class GUI:
         chain.LOG_HOOK = lambda line: self.q.put(("log", line))
 
         root.title("Chain Proxy")
-        root.geometry("560x520")
-        root.minsize(480, 420)
+        root.geometry("620x640")
+        root.minsize(520, 520)
         root.protocol("WM_DELETE_WINDOW", self.on_close)
         try:
             root.iconbitmap(str(chain.BASE / "chainproxy.ico"))
@@ -49,20 +56,53 @@ class GUI:
             b.pack(side="left", padx=(6, 0))
         ttk.Button(btns, text="Settings", command=self.settings).pack(side="right")
 
-        ttk.Label(root, text="Routes (double-click to switch):", padding=(10, 8, 10, 0)).pack(anchor="w")
-        self.lb = tk.Listbox(root, height=9, activestyle="none", font=("Consolas", 9))
-        self.lb.pack(fill="both", expand=True, padx=10)
+        ttk.Label(root, text="Routes (double-click to switch; green = in use):", padding=(10, 8, 10, 0)).pack(anchor="w")
+        lf = ttk.Frame(root)
+        lf.pack(fill="both", expand=True, padx=10)
+        # exportselection=False: selecting text in the log/entries must not clear the active route
+        self.lb = tk.Listbox(lf, height=9, activestyle="none", exportselection=False,
+                             font=("Consolas", 9), selectbackground="#1b7f2a", selectforeground="white")
+        lsb = ttk.Scrollbar(lf, orient="vertical", command=self.lb.yview)
+        self.lb.config(yscrollcommand=lsb.set)
+        lsb.pack(side="right", fill="y")
+        self.lb.pack(side="left", fill="both", expand=True)
         self.lb.bind("<Double-Button-1>", self.on_pick)
 
-        self.logbox = tk.Text(root, height=6, state="disabled", font=("Consolas", 8), bg="#f4f4f4")
-        self.logbox.pack(fill="x", padx=10, pady=10)
+        gf = ttk.Frame(root)
+        gf.pack(fill="both", expand=True, padx=10, pady=10)
+        self.logbox = tk.Text(gf, height=10, state="disabled", wrap="word", font=("Consolas", 8),
+                              bg="#f4f4f4")
+        gsb = ttk.Scrollbar(gf, orient="vertical", command=self.logbox.yview)
+        self.logbox.config(yscrollcommand=gsb.set)
+        gsb.pack(side="right", fill="y")
+        self.logbox.pack(side="left", fill="both", expand=True)
 
         self.set_controls(False)
+        self.recover_after_crash()
         self.root.after(150, self.pump)
         if chain.subs_are_placeholder():          # first run: ask for the links
             self.root.after(400, self.settings)
 
     # ---------------------------------------------------------- helpers
+    def recover_after_crash(self):
+        """The previous run was killed: its Windows proxy settings (and maybe a stale core) are
+        still in place. Put them back now, not only on the next Enable."""
+        try:
+            if chain.STATE_FILE.exists() and chain.control_send(chain.load_cfg(), "status", 2) is None:
+                chain.sys_proxy_restore()
+                chain.kill_stale_core()
+                self.add_log("previous run did not exit cleanly: Windows proxy settings restored")
+        except BaseException as e:
+            self.add_log(f"crash recovery failed: {getattr(e, 'code', None) or e}")
+
+    def add_log(self, line):
+        self.logbox.config(state="normal")
+        self.logbox.insert("end", clean(line) + "\n")
+        if int(self.logbox.index("end-1c").split(".")[0]) > 1500:      # keep the box small
+            self.logbox.delete("1.0", "300.0")
+        self.logbox.see("end")
+        self.logbox.config(state="disabled")
+
     def set_controls(self, active):
         st = "normal" if active and not self.busy else "disabled"
         for b in (self.prev_btn, self.next_btn, self.scan_btn):
@@ -86,6 +126,7 @@ class GUI:
 
     def refresh_view(self):
         app = self.app
+        top = self.lb.yview()[0]
         self.lb.delete(0, "end")
         if not app:
             self.state_var.set("Disabled")
@@ -95,17 +136,20 @@ class GUI:
             self.set_controls(False)
             return
         for i, t in enumerate(app.rank):
-            self.lb.insert("end", f"{'*' if i == app.idx else ' '} {i + 1:2d}. "
-                                  f"{app.delays[t]:5.0f}ms  {app.label(t)}")
+            self.lb.insert("end", clean(f"{'>' if i == app.idx else ' '} {i + 1:2d}. "
+                                        f"{app.delays[t]:5.0f}ms  {app.label(t)}"))
+        self.lb.yview_moveto(top)
         if app.idx >= 0:
-            self.lb.selection_set(app.idx)
+            self.lb.selection_clear(0, "end")
+            self.lb.selection_set(app.idx)          # green row = the route in use
+            self.lb.activate(app.idx)
             self.lb.see(app.idx)
             t = app.rank[app.idx]
             self.state_var.set("Active")
             self.state_lbl.config(fg="#1b7f2a")
-            self.route_var.set(f"Route {app.idx + 1}/{len(app.rank)}: {app.label(t)}  "
-                               f"({app.delays[t]:.0f} ms)")
-            self.exit_var.set(f"Exit: {app.last_info}")
+            self.route_var.set(clean(f"Route {app.idx + 1}/{len(app.rank)}: {app.label(t)}  "
+                                     f"({app.delays[t]:.0f} ms)"))
+            self.exit_var.set(clean(f"Exit: {app.last_info}"))
         self.set_controls(True)
 
     def pump(self):
@@ -113,17 +157,11 @@ class GUI:
             while True:
                 kind, val = self.q.get_nowait()
                 if kind == "log":
-                    self.logbox.config(state="normal")
-                    self.logbox.insert("end", val + "\n")
-                    self.logbox.see("end")
-                    self.logbox.config(state="disabled")
+                    self.add_log(val)
                 elif kind == "done":
                     self.busy = False
-                    if val and not val.startswith("["):
-                        self.logbox.config(state="normal")
-                        self.logbox.insert("end", val + "\n")
-                        self.logbox.see("end")
-                        self.logbox.config(state="disabled")
+                    if val:
+                        self.add_log(val)
                     if val and val.startswith("error:"):
                         messagebox.showerror("Chain Proxy", val[6:].strip())
                     self.refresh_view()
@@ -185,7 +223,7 @@ class GUI:
         win.geometry("560x430")
         win.transient(self.root)
         cfg = chain.load_cfg()
-        srcs = chain.SUBS_FILE.read_text(encoding="utf-8").splitlines() if chain.SUBS_FILE.exists() else []
+        srcs = chain.SUBS_FILE.read_text(encoding="utf-8-sig").splitlines() if chain.SUBS_FILE.exists() else []
         srcs = [l.strip() for l in srcs if l.strip() and not l.startswith("#")] + ["", ""]
 
         def row(label):
@@ -218,9 +256,9 @@ class GUI:
         def save():
             raw = {}
             if chain.CFG_FILE.exists():
-                raw = json.loads(chain.CFG_FILE.read_text(encoding="utf-8"))
+                raw = json.loads(chain.CFG_FILE.read_text(encoding="utf-8-sig"))
             split = lambda s: [x.strip() for x in s.split(",") if x.strip()]
-            raw["strict_urls"] = [x.strip() for x in t.get("1.0", "end").splitlines() if x.strip()]
+            raw["strict_urls"] = [chain.normalize_url(x) for x in t.get("1.0", "end").splitlines() if x.strip()]
             raw["blocked_countries"] = [x.upper() for x in split(e3.get())]
             raw["direct_suffixes"] = split(e4.get())
             chain.CFG_FILE.write_text(json.dumps(raw, indent=2), encoding="utf-8")

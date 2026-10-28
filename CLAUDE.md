@@ -10,9 +10,8 @@ messages in English (Windows consoles mangle RTL text). End-user and developer d
 Persian (`docs/`, `dev/README.md`).
 
 ## Verified state (last full run on a real Windows 11 VM, 2026-10-28)
-`make vm-all`: deploy, install, unit (21), e2e (29 checks, real sing-box, lab logs prove
-VM -> A -> B1) and gui all PASS. Not yet verified: real subscriptions (only the hermetic lab),
-Chrome itself, a Windows 10 VM, a clean-machine first run without the `offline/` files.
+`make vm-all`: deploy, install, unit (27), e2e (29 checks, real sing-box, lab logs prove
+VM -> A -> B1) and gui all PASS. Real subscriptions were run once by hand in the VM (download, rank, traffic through the chain, abrupt-kill recovery). Not yet verified: Chrome itself, a Windows 10 VM, a clean-machine first run without the `offline/` files.
 
 ## Layout
 - `chain.py` - all logic (parse, config, core, Windows proxy, watchdog, control socket, CLI)
@@ -53,6 +52,10 @@ Chrome itself, a Windows 10 VM, a clean-machine first run without the `offline/`
 - Do not commit/push unless asked. Never read `dev/vm/.ssh/` or `dev/vm/vm.conf` secrets.
 
 ## Gotchas
+- `subs.txt` holds the user's REAL links: git-ignored, never commit/pack it (`subs.example.txt` is the tracked template; chain.py creates `subs.txt` from it). `make vm-all` overwrites the VM copy with lab links: `make vm-deploy` again before a real-subscription run.
+- Windows crash safety: sing-box runs in a kill-on-close Job Object and `chain.py guard <pid>` restores the proxy if the app dies; test with `Stop-Process -Force` in the VM.
+- Unit tests that start a session on Windows touch the REAL registry: register `env.close` FIRST (`addCleanup`) so `app.cleanup()` still finds `.proxy_state.json`.
+- Use `make -j1`: unit tests and GUI smoke share ports and must not run in parallel.
 - An ssh session in Windows has no visible desktop: GUI work in the VM goes through an
   interactive scheduled task (`Start-Interactive` in dev/vm/guest/common.ps1) and needs a
   logged-on user (bootstrap `--autologon`).

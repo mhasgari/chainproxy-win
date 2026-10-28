@@ -64,6 +64,12 @@ def main():
 
     def s_after_pick():
         check(g.route_var.get().startswith("Route 3/"), f"double-click pick -> {g.route_var.get()!r}")
+        check(g.lb.curselection() == (2,) and g.lb.get(2).lstrip().startswith(">"),
+              f"picked route is marked in the list ({g.lb.curselection()}, {g.lb.get(2)!r})")
+        g.logbox.tag_add("sel", "1.0", "end")                  # selecting log text must not clear it
+        g.root.update()
+        check(g.lb.curselection() == (2,), "list selection survives selecting log text")
+        check(bool(g.logbox.get("1.0", "end").strip()), "log box has content")
         reply = env.chain.control_send(cfg, "next", 30)
         check(bool(reply) and reply.startswith("["), f"CLI next while window open -> {reply!r}")
         root.after(1500, s_follow)

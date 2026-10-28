@@ -18,9 +18,11 @@ if ($py) {
 $core = Join-Path $Repo 'core\sing-box.exe'
 Check (Test-Path $core) 'sing-box.exe installed into core\'
 if (Test-Path $core) {
-    $v = & $core version | Select-Object -First 1
-    Check ($LASTEXITCODE -eq 0) "sing-box runs ($v)"
-    $tags = (& $core version | Select-String 'Tags') -join ' '
+    $vout = @(& $core version)          # read it all: Select-Object -First 1 can kill the pipe and set a non-zero exit code
+    $rc = $LASTEXITCODE
+    $v = $vout | Select-Object -First 1
+    Check ($rc -eq 0) "sing-box runs ($v)"
+    $tags = ($vout | Select-String 'Tags') -join ' '
     Check ($tags -match 'with_clash_api') "sing-box build has the Clash API ($tags)"
 }
 

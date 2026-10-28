@@ -16,6 +16,7 @@ import os
 import shutil
 import sys
 import tempfile
+import threading
 import time
 import unittest
 import zipfile
@@ -257,6 +258,16 @@ class SessionTests(unittest.TestCase):
             time.sleep(0.3)
         self.assertTrue(app.core.alive(), "watchdog did not restart the core")
         self.assertNotEqual(app.core.proc.pid, old_pid)
+        # the new process is "alive" before its API answers; cleanup() must not race the
+        # restart (it killed the core mid-start and logged "restart failed" in the next test)
+        while time.time() < deadline:
+            try:
+                app.core.api("GET", "/version", timeout=2)
+                break
+            except Exception:
+                time.sleep(0.3)
+        with env.chain.LOCK:                                   # restart() is done
+            pass
 
     def test_placeholder_subs_give_clear_error(self):
         env = Env()
@@ -265,6 +276,102 @@ class SessionTests(unittest.TestCase):
         with self.assertRaises(SystemExit) as cm:
             env.chain.start_session(env.chain.load_cfg())
         self.assertIn("no real subscription", str(cm.exception))
+
+
+class RobustnessTests(unittest.TestCase):
+    def setUp(self):
+        self.env = Env()
+        self.addCleanup(self.env.close)          # registered first = runs last, after app.cleanup()
+        self.chain = self.env.chain
+
+    def test_bare_hosts_become_urls(self):
+        n = self.chain.normalize_url
+        self.assertEqual(n("gemini.google.com"), "https://gemini.google.com")
+        self.assertEqual(n(" http://x.test/a "), "http://x.test/a")
+        self.assertEqual(n(""), "")
+        (self.env.proj / "config.json").write_text(json.dumps({"strict_urls": ["gemini.google.com", ""]}))
+        self.assertEqual(self.chain.load_cfg()["strict_urls"], ["https://gemini.google.com"])
+
+    def test_subs_txt_is_created_from_the_template(self):
+        (self.env.proj / "subs.txt").unlink()
+        self.assertTrue(self.chain.subs_are_placeholder())          # recreated, still the placeholder
+        self.assertTrue((self.env.proj / "subs.txt").exists())
+
+    def test_release_zip_never_contains_the_users_subs(self):
+        import subprocess
+        import zipfile
+        root = Path(__file__).resolve().parents[1]
+        out = subprocess.run([sys.executable, str(root / "dev" / "package.py")], capture_output=True, text=True)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        z = sorted((root / "dist").glob("chainproxy-*.zip"))[-1]
+        with zipfile.ZipFile(z) as zf:
+            self.assertEqual(zf.read("chainproxy/subs.txt"), (root / "subs.example.txt").read_bytes())
+
+    def test_files_saved_by_notepad_with_a_bom(self):
+        (self.env.proj / "config.json").write_bytes(b'\xef\xbb\xbf{"top_k": 3}')
+        self.assertEqual(self.chain.load_cfg()["top_k"], 3)
+
+    def test_geo_answers_of_different_providers(self):
+        pg = self.chain.parse_geo
+        self.assertEqual(pg('{"ip":"1.2.3.4","country":"NL","org":"AS1 X"}'), ("1.2.3.4", "NL", "AS1 X"))
+        self.assertEqual(pg('{"ip":"1.2.3.4","country":"NL"}')[1], "NL")                    # api.country.is
+        self.assertEqual(pg('{"ip":"1.2.3.4","country":"Iran","country_code":"IR",'
+                            '"connection":{"org":"Z"}}'), ("1.2.3.4", "IR", "Z"))           # ipwho.is
+        with self.assertRaises(Exception):
+            pg('{"error":"rate limited"}')
+
+    def test_verify_uses_fallback_geo_and_reports_errors(self):
+        c = self.chain
+        cfg = c.load_cfg()
+        cfg["strict_urls"] = ["https://ok.test/", "https://down.test/"]
+        calls = []
+
+        def fake(url, port, timeout=12):
+            calls.append(url)
+            if "ipinfo" in url:
+                return 429, b"rate limited"
+            if "country.is" in url:
+                return 200, b'{"ip":"5.6.7.8","country":"DE"}'
+            return (None, b"") if "down" in url else (200, b"x")
+        c.via_proxy = fake
+        ok, info = c.verify(cfg)
+        self.assertFalse(ok)
+        self.assertIn("https://down.test/ -> no answer", info)
+        self.assertIn("5.6.7.8 DE", info)                      # the fallback provider was used
+        cfg["strict_urls"] = []
+        cfg["blocked_countries"] = ["DE"]
+        self.assertEqual(c.verify(cfg), (False, "exit in blocked country (5.6.7.8 DE)"))
+
+    def test_rank_by_speed_option(self):
+        c = self.chain
+        cfg = c.load_cfg()
+        cfg["rank_by_speed"] = True
+        app = c.start_session(cfg)
+        self.addCleanup(app.cleanup)
+        d = [app.delays[t] for t in app.rank]
+        self.assertEqual(d, sorted(d))
+
+    def test_guard_restores_when_the_app_dies(self):
+        c = self.chain
+        import subprocess
+        restored = []
+        c.sys_proxy_restore = lambda: restored.append(1)
+        c.STATE_FILE.write_text("{}")
+        p = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(0.5)"])
+        t0 = time.time()
+        threading_guard = c.guard
+        p_wait = threading.Thread(target=p.wait)
+        p_wait.start()                                          # reap it, so the pid really vanishes
+        threading_guard(p.pid, poll=0.1)
+        p_wait.join()
+        self.assertEqual(restored, [1])
+        self.assertLess(time.time() - t0, 10)
+        c.STATE_FILE.unlink()
+        restored.clear()
+        p = subprocess.Popen([sys.executable, "-c", "pass"])
+        p.wait()
+        c.guard(p.pid, poll=0.1)                                # clean exit: state file gone -> nothing
+        self.assertEqual(restored, [])
 
 
 class InstallerTests(unittest.TestCase):

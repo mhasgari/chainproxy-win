@@ -53,7 +53,7 @@ Chain Proxy یک **هماهنگ‌کننده** (orchestrator) روی هسته‌
 | `chain.py` | تمام منطق: پارس، کانفیگ، هسته، پروکسی ویندوز، نگهبان، کنترل، CLI. |
 | `gui.py` | پنجره‌ی tkinter؛ لایه‌ی نازک روی `chain.App`. |
 | `config.json` | تنظیمات کاربر (روی پیش‌فرض‌های `DEFAULTS` ادغام می‌شود). |
-| `subs.txt` | خط اول = ساپسکریپشن A، خط دوم = B. `#` توضیح است. |
+| `subs.txt` | خط اول = ساپسکریپشن A، خط دوم = B. `#` توضیح است. **در گیت نیست** (`.gitignore`)؛ اگر نباشد از قالب `subs.example.txt` ساخته می‌شود و بسته‌ی انتشار (`make package`) هم همیشه همین قالب را به‌جای فایل کاربر می‌گذارد. |
 | `next.bat`, `stop.bat`, `start.bat` | میانبرهای CLI (`next`, `off`, `Run.bat cli`). |
 | `chainproxy.ico` | آیکون میانبر و پنجره. |
 | `offline/` | فایل‌های جایگزین دانلود (نصب‌کننده‌ی Python، zip هسته). |
@@ -158,8 +158,17 @@ Transportها در `transport_block`: `ws` (با تبدیل `?ed=N` به `max_ea
 `go(step)` از مسیر فعلی در جهت `step` (دوری) جلو می‌رود؛ برای هر کاندید:
 1. `PUT /proxies/route` برای سوییچ،
 2. `verify(cfg)`:
-   - `GET <geo_url>` (پیش‌فرض `https://ipinfo.io/json`) از طریق پروکسی محلی؛ اگر `country ∈ blocked_countries` → رد. اگر پاسخ نیاید، IP «unknown» است و **رد نمی‌شود**.
-   - برای هر `strict_urls`: وضعیت `None` یا `≥ 400` → رد.
+   - `GET <geo_url>` (پیش‌فرض `https://ipinfo.io/json`) از طریق پروکسی محلی؛ اگر پاسخ نیامد (مثلاً 429 یا قطع‌بودن آن سرویس از آن خروجی) به‌ترتیب `geo_fallback_urls` امتحان می‌شود (`parse_geo` فرمت ipinfo / country.is / ipwho.is را می‌فهمد). اگر `country ∈ blocked_countries` → رد. اگر هیچ‌کدام پاسخ ندهند، IP «unknown» است و **رد نمی‌شود**.
+   - برای هر `strict_urls`: وضعیت `None` («no answer») یا `≥ 400` → رد. آدرس بدون scheme (`gemini.google.com`) هنگام بارگذاری به `https://...` تبدیل می‌شود (`normalize_url`)؛ قبلاً چنین مقداری همه‌ی مسیرها را رد می‌کرد.
+   - geo و strict_urls هم‌زمان اجرا می‌شوند؛ هر درخواست حداکثر `verify_timeout` ثانیه.
+
+**ترتیب لیست:** پیش‌فرض (`rank_by_speed=false`) اول زنجیره‌های A→B، بعد فقط B، بعد فقط A؛ داخل هر گروه بر اساس سرعت. دلیل: هدف ابزار زنجیره است و زنجیره همیشه کندتر از اجزایش؛ ترتیب صرفاً سرعتی مسیرهای تک‌گره را بالا می‌آورد. با `rank_by_speed=true` ترتیب کاملاً سرعتی می‌شود.
+
+**بسته‌شدن ناگهانی (kill / crash):**
+- sing-box در یک Job Object ویندوز با `KILL_ON_JOB_CLOSE` اجرا می‌شود (`job_attach`)؛ با مرگ برنامه هسته هم می‌میرد و پورت را نگه نمی‌دارد.
+- پس از تنظیم پروکسی، فرایند کوچک `chain.py guard <pid>` (`start_guard`) بالا می‌آید؛ اگر برنامه بدون `cleanup` بمیرد و `.proxy_state.json` مانده باشد، `sys_proxy_restore()` را اجرا می‌کند.
+- باز کردن پنجره (`recover_after_crash`)، `Enable` و `chain.py off` هم در صورت وجود state قدیمی تنظیمات را برمی‌گردانند و هسته‌ی یتیم همین پوشه را (`kill_stale_core`) می‌کشند.
+- پوشش‌داده‌نشده: خاموشی/Logoff ناگهانی (guard هم می‌میرد)؛ در لاگین بعدی با باز کردن برنامه یا `stop.bat` برمی‌گردد.
 3. اولین تأییدشده فعال می‌ماند؛ اگر هیچ‌کدام نگذراند مسیر قبلی بازگردانده می‌شود.
 
 همه‌ی تغییرها زیر `LOCK` (قفل بازگشتی سراسری) انجام می‌شوند تا کنسول/GUI/نگهبان/سوکت کنترل همزمان وضعیت را خراب نکنند.
@@ -220,6 +229,9 @@ idempotent است (`cleaned`)، `stop_evt` را set می‌کند، سرور ک�
 | `watchdog_failures` | `2` | شکست‌های پیاپی تا تعویض خودکار مسیر. |
 | `log_level` | `"warn"` | سطح لاگ sing-box. |
 | `geo_url` | `"https://ipinfo.io/json"` | سرویس تشخیص IP/کشور خروجی (پاسخ JSON با `ip`, `country`, `org`). خالی = بدون بررسی کشور. |
+| `geo_fallback_urls` | `["https://api.country.is/", "https://ipwho.is/"]` | سرویس‌های جایگزین وقتی `geo_url` جواب ندهد. |
+| `verify_timeout` | `12` | ثانیه برای هر درخواست تأیید مسیر. |
+| `rank_by_speed` | `false` | `true` = ترتیب لیست فقط سرعتی (به‌جای زنجیره‌ها، بعد B، بعد A). |
 | `private_direct` | `true` | مقصدهای خصوصی/LAN مستقیم بروند. آزمایشگاه e2e آن را `false` می‌کند. |
 
 > فایل `config.json` همراه پروژه فقط چند کلید را صریح گذاشته؛ بقیه پیش‌فرض‌اند. GUI هنگام Save فقط `strict_urls`، `blocked_countries`، `direct_suffixes` را می‌نویسد و کلیدهای دیگر را دست‌نخورده نگه می‌دارد.

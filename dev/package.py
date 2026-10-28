@@ -15,9 +15,9 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-RELEASE = ["Run.bat", "setup.ps1", "chain.py", "gui.py", "config.json", "subs.txt",
+RELEASE = ["Run.bat", "setup.ps1", "chain.py", "gui.py", "config.json", "subs.example.txt",
            "start.bat", "next.bat", "stop.bat", "chainproxy.ico", "README.md",
-           "docs/USER-GUIDE.md", "docs/DEVELOPER.md", "offline/README.txt"]
+           "docs/QUICKSTART.md", "docs/USER-GUIDE.md", "docs/DEVELOPER.md", "offline/README.txt"]
 WIN_SCRIPTS = [".bat", ".cmd", ".ps1"]
 
 
@@ -57,6 +57,8 @@ def build():
             if src.suffix.lower() in WIN_SCRIPTS:
                 data = re.sub(rb"\r?\n", b"\r\n", data)
             z.writestr(f"chainproxy/{rel}", data)
+        # the user's own subs.txt is never packed: the release gets the placeholder template
+        z.writestr("chainproxy/subs.txt", (ROOT / "subs.example.txt").read_bytes())
     print(f"built {out.relative_to(ROOT)} ({out.stat().st_size // 1024} KiB, {len(RELEASE)} files)")
     return 0
 

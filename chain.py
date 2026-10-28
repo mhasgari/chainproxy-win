@@ -71,8 +71,19 @@ DEFAULTS = {
     "watchdog_failures": 2,
     "log_level": "warn",
     "geo_url": "https://ipinfo.io/json",   # exit IP/country lookup ("" = skip)
+    "geo_fallback_urls": ["https://api.country.is/", "https://ipwho.is/"],   # tried when geo_url fails
+    "verify_timeout": 12,            # seconds per request of the route verification
+    "rank_by_speed": False,          # False: chains, then B-only, then A-only; True: pure speed order
     "private_direct": True,          # private/LAN destinations bypass the route
 }
+
+
+def normalize_url(u):
+    """'gemini.google.com' -> 'https://gemini.google.com' (a bare host is not a valid URL for urllib)."""
+    u = str(u).strip()
+    if not u:
+        return ""
+    return u if re.match(r"^[a-z][a-z0-9+.-]*://", u, re.I) else "https://" + u
 
 NOPROXY = ur.build_opener(ur.ProxyHandler({}))
 LOCK = threading.RLock()
@@ -91,7 +102,14 @@ def log(*a):
 def load_cfg():
     cfg = dict(DEFAULTS)
     if CFG_FILE.exists():
-        cfg.update(json.loads(CFG_FILE.read_text(encoding="utf-8")))
+        try:
+            cfg.update(json.loads(CFG_FILE.read_text(encoding="utf-8-sig")))
+        except ValueError as e:
+            sys.exit(f"config.json is not valid JSON ({e}); fix it or delete the file")
+    for key in ("strict_urls", "check_urls", "geo_fallback_urls"):
+        cfg[key] = [n for n in (normalize_url(x) for x in cfg[key]) if n]
+    if cfg.get("geo_url"):
+        cfg["geo_url"] = normalize_url(cfg["geo_url"])
     return cfg
 
 
@@ -282,9 +300,10 @@ def fetch_nodes(src, label):
 
 
 def load_sources():
+    ensure_subs_file()
     if not SUBS_FILE.exists():
         sys.exit("subs.txt not found")
-    lines = [l.strip() for l in SUBS_FILE.read_text(encoding="utf-8").splitlines()]
+    lines = [l.strip() for l in SUBS_FILE.read_text(encoding="utf-8-sig").splitlines()]
     lines = [l for l in lines if l and not l.startswith("#")]
     if not lines or subs_are_placeholder(lines):
         sys.exit("subs.txt has no real subscription links yet: put the first link on "
@@ -292,11 +311,22 @@ def load_sources():
     return lines
 
 
+def ensure_subs_file():
+    """First run: subs.txt (never committed, it holds the user's links) is made from the template."""
+    example = BASE / "subs.example.txt"
+    if not SUBS_FILE.exists() and example.exists():
+        try:
+            shutil.copyfile(example, SUBS_FILE)
+        except OSError:
+            pass
+
+
 def subs_are_placeholder(lines=None):
     if lines is None:
+        ensure_subs_file()
         if not SUBS_FILE.exists():
             return True
-        lines = [l.strip() for l in SUBS_FILE.read_text(encoding="utf-8").splitlines()]
+        lines = [l.strip() for l in SUBS_FILE.read_text(encoding="utf-8-sig").splitlines()]
         lines = [l for l in lines if l and not l.startswith("#")]
     return not lines or all("example.com/sub/" in l for l in lines)
 
@@ -507,6 +537,111 @@ def port_free(port):
             return False
 
 
+_JOB = None
+
+
+def job_attach(proc):
+    """Windows: put sing-box into a job object that dies with us, so even `taskkill /F` of
+    the app (or a crash) cannot leave an orphan core holding the ports."""
+    global _JOB
+    if not IS_WIN:
+        return
+    try:
+        import ctypes
+        from ctypes import wintypes
+        k = ctypes.windll.kernel32
+        k.CreateJobObjectW.restype = wintypes.HANDLE
+        k.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
+        k.SetInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD]
+        k.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+        if _JOB is None:
+            class Basic(ctypes.Structure):
+                _fields_ = [("PerProcessUserTimeLimit", ctypes.c_int64), ("PerJobUserTimeLimit", ctypes.c_int64),
+                            ("LimitFlags", wintypes.DWORD), ("MinimumWorkingSetSize", ctypes.c_size_t),
+                            ("MaximumWorkingSetSize", ctypes.c_size_t), ("ActiveProcessLimit", wintypes.DWORD),
+                            ("Affinity", ctypes.c_size_t), ("PriorityClass", wintypes.DWORD),
+                            ("SchedulingClass", wintypes.DWORD)]
+
+            class IoCounters(ctypes.Structure):
+                _fields_ = [(n, ctypes.c_uint64) for n in
+                            ("r", "w", "o", "rb", "wb", "ob")]
+
+            class Ext(ctypes.Structure):
+                _fields_ = [("Basic", Basic), ("Io", IoCounters), ("ProcessMemoryLimit", ctypes.c_size_t),
+                            ("JobMemoryLimit", ctypes.c_size_t), ("PeakProcessMemoryUsed", ctypes.c_size_t),
+                            ("PeakJobMemoryUsed", ctypes.c_size_t)]
+            h = k.CreateJobObjectW(None, None)
+            info = Ext()
+            info.Basic.LimitFlags = 0x2000          # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+            if not k.SetInformationJobObject(h, 9, ctypes.byref(info), ctypes.sizeof(info)):
+                raise OSError("SetInformationJobObject failed")
+            _JOB = h
+        if not k.AssignProcessToJobObject(_JOB, wintypes.HANDLE(int(proc._handle))):
+            raise OSError("AssignProcessToJobObject failed")
+    except Exception as e:
+        log("could not tie sing-box to this process (job object):", e)
+
+
+def kill_stale_core():
+    """Kill a sing-box left over from a previous run of THIS folder (matched by its config path)."""
+    if not IS_WIN:
+        return
+    cfgp = str(RUNTIME_DIR / "config.json").replace("'", "''")
+    script = ("Get-CimInstance Win32_Process -Filter \"Name='sing-box.exe'\" | "
+              f"Where-Object {{ $_.CommandLine -like '*{cfgp}*' }} | "
+              "ForEach-Object { Stop-Process -Id $_.ProcessId -Force }")
+    try:
+        subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+                       creationflags=0x08000000, timeout=30, capture_output=True)
+    except Exception as e:
+        log("could not look for a stale sing-box:", e)
+
+
+def pid_alive(pid):
+    if IS_WIN:
+        import ctypes
+        k = ctypes.windll.kernel32
+        h = k.OpenProcess(0x1000, False, pid)        # PROCESS_QUERY_LIMITED_INFORMATION
+        if not h:
+            return False
+        code = ctypes.c_ulong()
+        k.GetExitCodeProcess(h, ctypes.byref(code))
+        k.CloseHandle(h)
+        return code.value == 259                      # STILL_ACTIVE
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def guard(pid, poll=1.0):
+    """Tiny helper process: when the app (pid) disappears without cleaning up - killed from the
+    Task Manager, crashed - put the original Windows proxy settings back."""
+    while pid_alive(pid):
+        time.sleep(poll)
+    time.sleep(0.5)
+    if STATE_FILE.exists():
+        try:
+            sys_proxy_restore()
+        except Exception:
+            pass
+
+
+def start_guard():
+    if not IS_WIN:
+        return None
+    exe = Path(sys.executable)
+    pyw = exe.with_name("pythonw.exe")
+    try:
+        return subprocess.Popen([str(pyw if pyw.exists() else exe), str(BASE / "chain.py"), "guard", str(os.getpid())],
+                                creationflags=0x08000000 | 0x00000008, close_fds=True,
+                                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception as e:
+        log("could not start the crash guard:", e)
+        return None
+
+
 class Core:
     def __init__(self, cfg):
         self.cfg = cfg
@@ -538,6 +673,7 @@ class Core:
         logf = self.logf = open(RUNTIME_DIR / "core.log", "w")
         self.proc = subprocess.Popen(cmd + ["run", "-c", str(path)], stdout=logf,
                                      stderr=subprocess.STDOUT, creationflags=flags)
+        job_attach(self.proc)
         for _ in range(60):
             if self.proc.poll() is not None:
                 raise RuntimeError("sing-box exited; see runtime/core.log")
@@ -546,6 +682,7 @@ class Core:
                 return
             except Exception:
                 time.sleep(0.25)
+        self.stop()          # a half-started core must not stay "alive": the watchdog would never retry
         raise RuntimeError("sing-box API did not come up; see runtime/core.log")
 
     def api(self, method, path, body=None, timeout=15):
@@ -560,6 +697,9 @@ class Core:
         q = f"/proxies/{up.quote(tag)}/delay?url={up.quote(url)}&timeout={timeout_ms}"
         try:
             return self.api("GET", q, timeout=timeout_ms / 1000 + 4).get("delay")
+        except urllib.error.HTTPError as e:
+            e.close()                       # otherwise its temp file is only freed by the GC (ResourceWarning)
+            return None
         except Exception:
             return None
 
@@ -648,28 +788,56 @@ def via_proxy(url, port, timeout=12):
         with op.open(ur.Request(url, headers={"User-Agent": UA}), timeout=timeout) as r:
             return r.status, r.read(65536)
     except urllib.error.HTTPError as e:
+        e.close()
         return e.code, b""
     except Exception:
         return None, b""
 
 
+def parse_geo(body):
+    """(ip, country code or None, org) from the JSON of ipinfo.io / api.country.is / ipwho.is ..."""
+    j = json.loads(body)
+    ip = j.get("ip") or j.get("query")
+    cc = j.get("country_code") or j.get("countryCode") or j.get("country")
+    cc = cc.upper() if isinstance(cc, str) and len(cc) == 2 else None
+    org = j.get("org") or (j.get("connection") or {}).get("org") or j.get("isp") or ""
+    if not ip:
+        raise ValueError("no ip in the answer")
+    return ip, cc, str(org)
+
+
+def geo_lookup(cfg):
+    """Exit IP/country through the active route; the first provider that answers wins."""
+    for url in [cfg.get("geo_url")] + list(cfg.get("geo_fallback_urls", [])):
+        if not url:
+            continue
+        st, body = via_proxy(url, cfg["mixed_port"], min(cfg["verify_timeout"], 8))
+        if st == 200:
+            try:
+                return parse_geo(body)
+            except Exception:
+                pass
+    return None
+
+
 def verify(cfg):
-    """Exit-country check + strict sites. Returns (ok, info)."""
-    port = cfg["mixed_port"]
+    """Exit-country check + strict sites (in parallel). Returns (ok, info)."""
+    port, to = cfg["mixed_port"], cfg["verify_timeout"]
+    strict = cfg["strict_urls"]
+    with ThreadPoolExecutor(len(strict) + 1) as ex:
+        geo_f = ex.submit(geo_lookup, cfg) if cfg.get("geo_url") else None
+        site_f = [(u, ex.submit(via_proxy, u, port, to)) for u in strict]
+        geo = geo_f.result() if geo_f else None
+        sites = [(u, f.result()[0]) for u, f in site_f]
     info = "exit IP unknown"
-    st, body = via_proxy(cfg["geo_url"], port) if cfg.get("geo_url") else (None, b"")
-    if st == 200:
-        try:
-            j = json.loads(body)
-            info = f"{j.get('ip')} {j.get('country')} {j.get('org', '')}"
-            if j.get("country") in cfg["blocked_countries"]:
-                return False, f"exit in blocked country ({info})"
-        except Exception:
-            pass
-    for url in cfg["strict_urls"]:
-        st, _ = via_proxy(url, port)
+    if geo:
+        ip, cc, org = geo
+        info = f"{ip} {cc or '??'} {org}".strip()
+        if cc and cc in [c.upper() for c in cfg["blocked_countries"]]:
+            return False, f"exit in blocked country ({info})"
+    for url, st in sites:
         if st is None or st >= 400:
-            return False, f"{url} -> {st} ({info})"
+            return False, f"{url} -> {'no answer' if st is None else st} ({info})"
     return True, info
 
 
@@ -688,6 +856,7 @@ class App:
         self.cleaned = False
         self.last_info = ""     # exit-IP info of the active route
         self.srv = None
+        self.guard = None
 
     def label(self, tag):
         parts = tag.split("-")
@@ -713,7 +882,10 @@ class App:
         def ordered(tags):
             return sorted([t for t in tags if res.get(t) is not None], key=lambda t: res[t])
         # preference: chains (A->B), then B alone, then A alone
-        self.rank = ordered(chains) + ordered(list(B)) + ordered(list(A))
+        if self.cfg["rank_by_speed"]:
+            self.rank = ordered(chains + list(B) + list(A))
+        else:
+            self.rank = ordered(chains) + ordered(list(B)) + ordered(list(A))
         self.idx = -1
         log(f"{len(self.rank)} routes usable "
             f"({len(ordered(chains))} chains, {len(ordered(list(B)))} B-only, "
@@ -727,6 +899,8 @@ class App:
             n = len(self.rank)
             start = self.idx
             for k in range(n):
+                if self.stop_evt.is_set():
+                    return "stopping"
                 if start < 0:
                     i = k if step > 0 else n - 1 - k
                 else:
@@ -755,14 +929,21 @@ class App:
                 return "no such route"
             prev = self.idx
             tag = self.rank[i]
-            self.core.select(tag)
-            ok, info = verify(self.cfg)
+            try:
+                self.core.select(tag)
+                ok, info = verify(self.cfg)
+            except Exception as e:
+                ok, info = False, f"select failed: {e}"
             if ok:
                 self.idx = i
                 self.last_info = info
-                return f"[{i + 1}/{len(self.rank)}] {self.label(tag)}  exit: {info}"
+                return (f"[{i + 1}/{len(self.rank)}] {self.label(tag)}  "
+                        f"{self.delays[tag]:.0f}ms  exit: {info}")
             if 0 <= prev < len(self.rank):
-                self.core.select(self.rank[prev])
+                try:
+                    self.core.select(self.rank[prev])
+                except Exception as e:
+                    log("could not go back to the previous route:", e)
             return f"route rejected: {info}"
 
     def status(self):
@@ -804,6 +985,8 @@ class App:
             log("Windows proxy restored")
         except Exception as e:
             log("restore failed:", e)
+        if self.guard:
+            self.guard.kill()
         self.core.stop()
 
     # ---- control socket
@@ -927,6 +1110,9 @@ def start_session(cfg):
                 break
             time.sleep(0.5)
         if not port_free(cfg[key]):
+            kill_stale_core()                 # an orphan sing-box of a previous (killed) run?
+            time.sleep(1)
+        if not port_free(cfg[key]):
             sys.exit(f"port {cfg[key]} ({key}) is already in use; close the other program or "
                      "change it in config.json")
     validator = node_valid
@@ -973,6 +1159,7 @@ def start_session(cfg):
             raise SystemExit("no route available")
         sys_proxy_set(cfg["mixed_port"], cfg["bypass"])
         log(f"Windows proxy -> 127.0.0.1:{cfg['mixed_port']}  (Chrome can be used now)")
+        app.guard = start_guard()
         app.serve_control()
         if cfg["watchdog_seconds"] > 0:
             threading.Thread(target=app.watchdog, daemon=True).start()
@@ -1025,10 +1212,13 @@ def main():
         else:
             ensure_core()
             print("sing-box OK:", core_run(["version"])[1].splitlines()[0])
+    elif cmd == "guard" and len(sys.argv) > 2:
+        guard(int(sys.argv[2]))
     elif cmd == "off":
         r = control_send(cfg, "off", 10)
-        if r is None:                    # not running: just make sure settings are restored
+        if r is None:                    # not running: restore settings, remove an orphan core
             sys_proxy_restore()
+            kill_stale_core()
             print("not running; proxy settings restored if needed")
         else:
             print(r)

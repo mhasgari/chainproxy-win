@@ -7,6 +7,10 @@
 /offline/*
 !/offline/README.txt
 
+# YOUR subscription links: never commit (subs.example.txt is the template)
+/subs.txt
+/update-*.zip
+
 # build / test output
 /dist/
 /dev/artifacts/
