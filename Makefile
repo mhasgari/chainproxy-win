@@ -4,7 +4,7 @@ VMTEST  := $(PY) dev/vm/vmtest.py
 XVFB    := $(shell command -v xvfb-run 2>/dev/null)
 
 .DEFAULT_GOAL := help
-.PHONY: help test test-gui test-dev lint check e2e-local package clean \
+.PHONY: help test test-gui test-dev lint check e2e-local package pdf installer clean \
         vm-doctor vm-fetch vm-bootstrap vm-snapshot vm-revert vm-deploy vm-install \
         vm-unit vm-e2e vm-gui vm-all vm-all-clean vm-shell vm-screenshot vm-logs
 
@@ -34,6 +34,12 @@ e2e-local:           ## end-to-end with the REAL sing-box on this machine
 	$(PY) dev/lab/e2e_local.py
 
 check: lint test test-dev test-gui e2e-local   ## everything that runs without the VM
+
+pdf:                 ## rebuild docs/Chain-Proxy-Quick-Start-fa.pdf (pandoc + chromium)
+	$(PY) dev/make_pdf.py
+
+installer:           ## build dist/ChainProxy-Setup-<ver>.exe in the VM (Inno Setup)
+	$(PY) dev/make_installer.py
 
 package:             ## release zip in dist/
 	$(PY) dev/package.py

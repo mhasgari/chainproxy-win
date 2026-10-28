@@ -30,6 +30,7 @@ VM -> A -> B1) and gui all PASS. Real subscriptions were run once by hand in the
 - single stages: `make vm-unit`, `make vm-e2e`, `make vm-gui`, `make vm-install`
 - `python3 dev/vm/vmtest.py ps "<PowerShell>"` - run one command in the VM
 - results: `dev/artifacts/vm-latest/` (summary.json, *.log, gui-*.png, lab evidence)
+- `make installer` / `python3 dev/make_installer.py` - builds `dist/ChainProxy-Setup-<ver>.exe` with Inno Setup 6 INSIDE the VM (installer/chainproxy.iss; Inno comes from github.com/jrsoftware/issrc releases, check its signature). `make pdf` rebuilds the quick-start PDF; rebuild BEFORE the zip/installer.
 - `/vm-test`, `/check`, `/release` slash commands wrap the above
 
 ## When to test where

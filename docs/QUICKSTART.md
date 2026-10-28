@@ -3,6 +3,9 @@
 یک صفحه برای شروع. جزئیات کامل در [راهنمای کاربر](USER-GUIDE.md).
 
 ## ۱. نصب (یک‌بار)
+**روش آسان: نصب‌کننده.** فایل `ChainProxy-Setup-<نسخه>.exe` را از صفحه‌ی [Releases](https://github.com/mhasgari/chainproxy-win/releases) بگیرید و اجرا کنید (بدون نیاز به ادمین؛ نصب در `%LOCALAPPDATA%\Programs\ChainProxy`). چون امضای دیجیتال ندارد، ویندوز ممکن است هشدار SmartScreen بدهد: «More info» ← «Run anyway». در پایان «Start Chain Proxy now» را بزنید و از مرحله‌ی ۳ ادامه دهید. حذف: Settings ← Apps (پروکسی ویندوز خودکار برمی‌گردد).
+
+**روش دستی (zip):**
 1. پوشه‌ی `chainproxy` را در یک جای ثابت بگذارید (مثلاً `C:\Tools\chainproxy`)، نه داخل زیپ یا Downloads.
 2. روی **`Run.bat`** دوبل‌کلیک کنید. اولین بار خودش Python و sing-box را می‌گیرد (چند دقیقه) و یک میانبر **Chain Proxy** روی دسکتاپ می‌سازد.
 3. پنجره‌ی **Settings** باز می‌شود: لینک ساپسکریپشن خودتان را در «Subscription 1» بگذارید و **Save** بزنید. «Subscription 2» به‌طور پیش‌فرض لیست عمومی **best** پروژه‌ی [GeminiRoute](https://github.com/alizn7/GeminiRoute) است (`https://alizn7.github.io/GeminiRoute/sub/best.txt`)؛ می‌توانید همان را نگه دارید یا لینک دیگری بگذارید.
