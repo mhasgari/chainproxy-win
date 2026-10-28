@@ -4,7 +4,7 @@
 
 
 ## شروع (یک کلیک)
-ساده‌ترین راه: `ChainProxy-Setup-<نسخه>.exe` از [Releases](https://github.com/mhasgari/chainproxy-win/releases) (بدون ادمین؛ امضای دیجیتال ندارد و SmartScreen هشدار می‌دهد). یا zip را باز کنید و:
+ساده‌ترین راه: `ChainProxy-Setup-<نسخه>.exe` از [Releases](https://github.com/mhasgari/chainproxy-win/releases) (یا `ChainProxy-Setup-Full-<نسخه>.exe` که Python و sing-box را هم دارد و برای دانلود مسدود مناسب است؛ بدون ادمین؛ امضای دیجیتال ندارد و SmartScreen هشدار می‌دهد). یا zip را باز کنید و:
 `Run.bat` را اجرا کنید. اولین بار خودش هر چه لازم باشد می‌گیرد و نصب می‌کند:
 - **Python** (با tkinter) اگر نباشد: نصب‌کننده رسمی python.org، با بررسی امضای دیجیتال، برای کاربر جاری و بدون نیاز به ادمین
 - **sing-box**: آخرین نسخه از GitHub، با بررسی sha256 و تلاش مجدد؛ اگر خراب یا ناقص بود خودکار دوباره نصب می‌شود

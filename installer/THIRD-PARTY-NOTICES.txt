@@ -1,0 +1,16 @@
+Third-party software bundled in the "Full" installer (folder "offline")
+=====================================================================
+
+These files are copied unmodified from their official sources. They are only used by
+Chain Proxy's first-run setup (Run.bat) when they are not already installed.
+
+Python 3.12.10 (python-3.12.10-amd64.exe)
+  Source:  https://www.python.org/downloads/windows/
+  License: Python Software Foundation License, https://docs.python.org/3/license.html
+
+sing-box 1.14.4 (sing-box-1.14.4-windows-amd64.zip)
+  Source:  https://github.com/SagerNet/sing-box/releases  (source code: https://github.com/SagerNet/sing-box)
+  License: GNU GPL v3 or later with additional terms, https://github.com/SagerNet/sing-box/blob/main/LICENSE
+
+Chain Proxy itself is MIT licensed (see LICENSE). sing-box runs as a separate program; it is
+not linked into Chain Proxy.

@@ -38,8 +38,9 @@ check: lint test test-dev test-gui e2e-local   ## everything that runs without t
 pdf:                 ## rebuild docs/Chain-Proxy-Quick-Start-fa.pdf (pandoc + chromium)
 	$(PY) dev/make_pdf.py
 
-installer:           ## build dist/ChainProxy-Setup-<ver>.exe in the VM (Inno Setup)
+installer:           ## build dist/ChainProxy-Setup-<ver>.exe and the -Full one (with Python + sing-box) in the VM
 	$(PY) dev/make_installer.py
+	$(PY) dev/make_installer.py --full
 
 package:             ## release zip in dist/
 	$(PY) dev/package.py

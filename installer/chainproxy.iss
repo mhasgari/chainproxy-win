@@ -23,7 +23,11 @@ DefaultGroupName=Chain Proxy
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 OutputDir=output
+#ifdef Full
+OutputBaseFilename=ChainProxy-Setup-Full-{#AppVersion}
+#else
 OutputBaseFilename=ChainProxy-Setup-{#AppVersion}
+#endif
 SetupIconFile={#StageDir}\chainproxy.ico
 UninstallDisplayIcon={app}\chainproxy.ico
 LicenseFile={#StageDir}\LICENSE
@@ -48,7 +52,7 @@ Name: "{autodesktop}\Chain Proxy"; Filename: "{app}\Run.bat"; WorkingDir: "{app}
 Name: "{autoprograms}\Chain Proxy Quick Start (PDF)"; Filename: "{app}\docs\Chain-Proxy-Quick-Start-fa.pdf"
 
 [Run]
-Filename: "{app}\Run.bat"; Description: "Start Chain Proxy now (first start downloads Python and sing-box)"; WorkingDir: "{app}"; Flags: postinstall nowait skipifsilent shellexec
+Filename: "{app}\Run.bat"; Description: "Start Chain Proxy now (the first start sets up Python and sing-box)"; WorkingDir: "{app}"; Flags: postinstall nowait skipifsilent shellexec
 
 [UninstallRun]
 ; give the Windows proxy settings back before the files go away

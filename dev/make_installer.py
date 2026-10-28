@@ -2,7 +2,10 @@
 """
 Build dist/ChainProxy-Setup-<version>.exe (Inno Setup) in the Windows test VM.
 
-    python3 dev/make_installer.py
+    python3 dev/make_installer.py          -> dist/ChainProxy-Setup-<ver>.exe  (downloads Python/sing-box on first run)
+    python3 dev/make_installer.py --full   -> dist/ChainProxy-Setup-Full-<ver>.exe (Python and sing-box inside)
+
+--full takes the files from dev/vm/cache (make vm-fetch: version and signature/hash checked).
 
 Needs the VM (see dev/README.md) with Inno Setup 6 installed for the test user
 (https://github.com/jrsoftware/issrc/releases, `innosetup-6.x.exe /VERYSILENT /CURRENTUSER`;
@@ -25,10 +28,18 @@ WORK = "chainproxy-installer"        # under the VM user's home
 
 
 def main():
+    full = "--full" in sys.argv[1:]
     ver = package.version()
     with tempfile.TemporaryDirectory() as d:
         stage = Path(d) / "stage"
         package.stage(stage)
+        if full:
+            for pattern in (f"python-{vmtest.CONF['PY_VERSION']}-amd64.exe", "sing-box-*-windows-amd64.zip"):
+                f = vmtest.cached(pattern)
+                if not f:
+                    sys.exit(f"{pattern} is not in dev/vm/cache: run `make vm-fetch` first")
+                shutil.copy(f, stage / "offline" / f.name)
+            shutil.copy(ROOT / "installer" / "THIRD-PARTY-NOTICES.txt", stage / "THIRD-PARTY-NOTICES.txt")
         buf = io.BytesIO()
         with tarfile.open(fileobj=buf, mode="w:gz") as tar:
             tar.add(stage, arcname="stage")
@@ -45,14 +56,14 @@ if (Test-Path $w) {{ Remove-Item -Recurse -Force $w }}
 New-Item -ItemType Directory -Force $w | Out-Null
 tar -xzf "$HOME\\{WORK}.tar.gz" -C $w
 Remove-Item "$HOME\\{WORK}.tar.gz"
-& $iscc "/DAppVersion={ver}" "/DStageDir=$w\\stage" "/O$w\\output" "$w\\chainproxy.iss"
+& $iscc "/DAppVersion={ver}" {"/DFull=1" if full else ""} "/DStageDir=$w\\stage" "/O$w\\output" "$w\\chainproxy.iss"
 if ($LASTEXITCODE -ne 0) {{ throw "ISCC failed ($LASTEXITCODE)" }}
 Get-ChildItem "$w\\output" | ForEach-Object {{ $_.Name + " " + $_.Length }}
 ''', timeout=600)
     print(out.strip())
     if rc != 0:
         sys.exit("installer build failed")
-    name = f"ChainProxy-Setup-{ver}.exe"
+    name = f"ChainProxy-Setup-Full-{ver}.exe" if full else f"ChainProxy-Setup-{ver}.exe"
     dest = ROOT / "dist" / name
     dest.parent.mkdir(exist_ok=True)
     if not vmtest.scp_from(f"{WORK}/output/{name}", dest):

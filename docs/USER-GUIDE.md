@@ -35,7 +35,7 @@ Python و sing-box را لازم نیست خودتان نصب کنید؛ `Run.ba
 
 ## ۳. نصب و اولین اجرا
 
-**با نصب‌کننده (ساده‌ترین):** `ChainProxy-Setup-<نسخه>.exe` از [Releases](https://github.com/mhasgari/chainproxy-win/releases) را اجرا کنید؛ بدون ادمین در `%LOCALAPPDATA%\Programs\ChainProxy` نصب می‌شود، میانبر Start Menu (و در صورت انتخاب، دسکتاپ) می‌سازد و حذف‌کننده دارد که پروکسی ویندوز را هم برمی‌گرداند. نصب روی نسخه‌ی قبلی، `subs.txt` و `config.json` شما را نگه می‌دارد. نصب‌کننده امضای دیجیتال ندارد؛ SmartScreen هشدار می‌دهد (More info ← Run anyway). Python و sing-box داخل آن نیستند و در اولین اجرا همان‌طور که پایین‌تر آمده گرفته می‌شوند. بقیه‌ی این بخش برای نصب دستی از zip است.
+**با نصب‌کننده (ساده‌ترین):** `ChainProxy-Setup-<نسخه>.exe` از [Releases](https://github.com/mhasgari/chainproxy-win/releases) را اجرا کنید؛ بدون ادمین در `%LOCALAPPDATA%\Programs\ChainProxy` نصب می‌شود، میانبر Start Menu (و در صورت انتخاب، دسکتاپ) می‌سازد و حذف‌کننده دارد که پروکسی ویندوز را هم برمی‌گرداند. نصب روی نسخه‌ی قبلی، `subs.txt` و `config.json` شما را نگه می‌دارد. نصب‌کننده امضای دیجیتال ندارد؛ SmartScreen هشدار می‌دهد (More info ← Run anyway). Python و sing-box داخل آن نیستند و در اولین اجرا همان‌طور که پایین‌تر آمده گرفته می‌شوند. **نسخه‌ی Full** (`ChainProxy-Setup-Full-<نسخه>.exe`، حدود ۶۰ مگابایت) Python و sing-box را هم دارد (در پوشه‌ی `offline`؛ مجوزها در `THIRD-PARTY-NOTICES.txt`) و برای شبکه‌هایی است که دانلود در آن‌ها مسدود است؛ این دو بدون دانلود نصب می‌شوند. بقیه‌ی این بخش برای نصب دستی از zip است.
 
 1. پوشه‌ی `chainproxy` را در **یک جای ثابت** بگذارید (مثلاً `C:\Tools\chainproxy` یا داخل Documents). از اجرا از داخل فایل زیپ یا پوشه‌ی Downloads پرهیز کنید، چون میانبر به همین پوشه اشاره می‌کند.
 2. روی `Run.bat` دوبل‌کلیک کنید.
