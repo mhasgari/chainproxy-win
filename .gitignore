@@ -24,4 +24,4 @@ __pycache__/
 /dev/vm/cache/
 
 # personal Claude Code settings
-/.claude/settings.local.json
+/.claude/settings.local.json*
