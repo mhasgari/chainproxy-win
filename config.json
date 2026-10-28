@@ -1,0 +1,13 @@
+{
+  "mixed_port": 10808,
+  "top_k": 5,
+  "check_urls": [
+    "https://www.gstatic.com/generate_204",
+    "https://cp.cloudflare.com/generate_204"
+  ],
+  "strict_urls": [],
+  "blocked_countries": ["IR"],
+  "direct_suffixes": [".ir"],
+  "watchdog_seconds": 60,
+  "watchdog_failures": 2
+}

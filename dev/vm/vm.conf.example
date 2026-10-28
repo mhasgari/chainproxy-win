@@ -1,0 +1,38 @@
+# Windows test VM settings for dev/vm/vmtest.py
+# Copy to dev/vm/vm.conf (git-ignored) and fill in the first block.
+# Every key can also be overridden from the environment:  VM_NAME=win10 make vm-all
+
+# --- required -----------------------------------------------------------------------
+# libvirt domain name as virt-manager shows it   (list: virsh -c qemu:///system list --all)
+VM_NAME=win11
+# the Windows account the tests log in as (for the GUI test it must be the account that is
+# logged on to the VM desktop). A domain account may be written DOMAIN\user: the ssh client
+# rejects the backslash, so the tool connects as user@DOMAIN@host.
+WIN_USER=tester
+
+# --- usually fine as is ---------------------------------------------------------------
+# virt-manager's default connection
+LIBVIRT_URI=qemu:///system
+# libvirt network the VM is attached to (NAT "default" -> host is 192.168.122.1)
+LIBVIRT_NET=default
+# snapshot used by `vmtest.py all --clean`
+SNAPSHOT=chainproxy-clean
+# dedicated key, created by `vmtest.py bootstrap` (git-ignored)
+SSH_KEY=dev/vm/.ssh/id_ed25519
+# folder under the Windows user's home that receives the project
+REMOTE_DIR=chainproxy-test
+# Python version installed in the VM by setup.ps1 (must match setup.ps1's $PyVersion)
+PY_VERSION=3.12.10
+
+# --- ports on the host that the VM must be able to reach -------------------------------
+LAB_PORT=18080
+NODE_PORT_BASE=18101
+BOOT_PORT=18765
+# seconds to wait for the one-time bootstrap (Windows feature installs can be slow)
+BOOT_TIMEOUT=2400
+
+# --- only for bridged / unusual networks ----------------------------------------------
+# A VM with two NICs (libvirt NAT + bridged) is handled: the address inside the libvirt
+# network's subnet is used. Set VM_IP only when that detection is not enough.
+# VM_IP=192.168.122.50
+# HOST_IP=192.168.122.1

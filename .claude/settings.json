@@ -1,0 +1,55 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make test)",
+      "Bash(make test-gui)",
+      "Bash(make test-dev)",
+      "Bash(make lint)",
+      "Bash(make check)",
+      "Bash(make e2e-local)",
+      "Bash(make package)",
+      "Bash(make vm-doctor)",
+      "Bash(make vm-deploy)",
+      "Bash(make vm-install)",
+      "Bash(make vm-unit)",
+      "Bash(make vm-e2e)",
+      "Bash(make vm-gui)",
+      "Bash(make vm-all)",
+      "Bash(make vm-screenshot)",
+      "Bash(make vm-logs)",
+      "Bash(python3 tests/run_tests.py:*)",
+      "Bash(python3 dev/vm/vmtest.py doctor)",
+      "Bash(python3 dev/vm/vmtest.py ps:*)",
+      "Bash(python3 dev/vm/vmtest.py screenshot)",
+      "Bash(python3 dev/vm/vmtest.py pull-logs)",
+      "Bash(python3 dev/vm/vmtest.py unit:*)",
+      "Bash(python3 dev/vm/vmtest.py e2e:*)",
+      "Bash(python3 dev/vm/vmtest.py gui:*)",
+      "Bash(python3 dev/vm/vmtest.py install:*)",
+      "Bash(python3 dev/vm/vmtest.py deploy:*)",
+      "Bash(python3 dev/vm/vmtest.py all:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(virsh -c qemu:///system list:*)",
+      "Bash(virsh -c qemu:///system domstate:*)",
+      "Read(./dev/artifacts/**)"
+    ],
+    "ask": [
+      "Bash(make vm-revert)",
+      "Bash(make vm-all-clean)",
+      "Bash(make vm-snapshot)",
+      "Bash(python3 dev/vm/vmtest.py revert:*)",
+      "Bash(python3 dev/vm/vmtest.py snapshot:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
+    ],
+    "deny": [
+      "Read(./dev/vm/.ssh/**)",
+      "Read(./dev/vm/vm.conf)",
+      "Bash(virsh -c qemu:///system undefine:*)",
+      "Bash(virsh -c qemu:///system snapshot-delete:*)",
+      "Bash(sudo:*)"
+    ]
+  }
+}

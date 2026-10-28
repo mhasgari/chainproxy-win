@@ -1,0 +1,23 @@
+# runtime state of the app (contains node credentials)
+/cache/
+/runtime/
+/core/
+/.proxy_state.json
+/.shortcuts_done
+/offline/*
+!/offline/README.txt
+
+# build / test output
+/dist/
+/dev/artifacts/
+/dev/bin/
+__pycache__/
+*.pyc
+
+# VM tooling: local settings, keys, downloaded installers
+/dev/vm/vm.conf
+/dev/vm/.ssh/
+/dev/vm/cache/
+
+# personal Claude Code settings
+/.claude/settings.local.json

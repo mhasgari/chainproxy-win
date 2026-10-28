@@ -1,0 +1,13 @@
+# Windows runs these: keep CRLF in the repository and in every checkout
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+# everything else: LF
+*.py    text eol=lf
+*.md    text eol=lf
+*.json  text eol=lf
+*.txt   text eol=lf
+*.sh    text eol=lf
+Makefile text eol=lf
+*.ico   binary
+*.png   binary
