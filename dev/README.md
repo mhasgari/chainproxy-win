@@ -131,7 +131,7 @@ claude
 | `make package` | zip نسخه‌ی کاربر در `dist/` | |
 | `make pdf` | ساخت PDF راهنمای سریع از `docs/QUICKSTART.md` (pandoc + chromium روی میزبان) | چند ثانیه |
 | `make installer` | ساخت دو نصب‌کننده‌ی `dist/ChainProxy-Setup-<ver>.exe` و `...-Full-...` با Inno Setup **داخل VM** (اگر نباشد با بررسی امضا خودش نصب می‌شود) | ~۲ دقیقه |
-| `make vm-installer` / `make vm-installer-full` | آزمون نصب‌کننده در VM: نصب، اجرای اول (`setup.ps1`، Python، sing-box)، ارتقا (حفظ `subs.txt`)، حذف | ۱ تا ۳ دقیقه |
+| `make vm-installer` / `make vm-installer-full` (و `python3 dev/vm/vmtest.py installer --full --python full\|notk` برای «Python از قبل هست / بدون tkinter») | آزمون نصب‌کننده در VM: نصب، اجرای اول (`setup.ps1`، Python، sing-box)، ارتقا (حفظ `subs.txt`)، حذف | ۱ تا ۳ دقیقه |
 | `make vm-clean` | **همه‌ی آثار پروژه را از VM پاک می‌کند** (کپی تست، برنامه‌ی نصب‌شده، نصب‌کننده‌ها، میانبرها، Python و Inno Setup، تنظیم پروکسی). OpenSSH/sshd، کلید، autologon و کاربر دست‌نخورده می‌مانند | ~۱ دقیقه |
 | `make vm-clean-light` | همان ولی Python و Inno Setup می‌مانند (چرخه‌ی سریع‌تر) | ~۳۰ ثانیه |
 
@@ -222,6 +222,8 @@ dev/
 ├── README.md                  این راهنما
 ├── setup-cachyos.sh           راه‌اندازی میزبان
 ├── package.py                 zip کاربر نهایی + بررسی قواعد اسکریپت‌های ویندوز
+├── make_pdf.py                PDF راهنمای سریع از docs/QUICKSTART.md (pandoc + chromium)
+├── make_installer.py          نصب‌کننده‌های Inno Setup (داخل VM ساخته می‌شوند)
 ├── lab/
 │   ├── lab.py                 نودهای A/B با sing-box واقعی + «اینترنت» جعلی
 │   ├── e2e_client.py          جریان آزمون از سمت کلاینت (لینوکس یا ویندوز)
@@ -232,7 +234,9 @@ dev/
 │   └── guest/                 اسکریپت‌هایی که داخل ویندوز اجرا می‌شوند
 │       ├── bootstrap.ps1      SSH + کلید + autologon (یک بار)
 │       ├── common.ps1         توابع مشترک (یافتن Python، اجرا روی دسکتاپ، ...)
-│       └── install.ps1        آزمون نصب اولیه
+│       ├── install.ps1        آزمون نصب اولیه
+│       ├── installer-test.ps1 آزمون نصب‌کننده (نصب، اجرای اول، ارتقا، حذف)
+│       └── clean.ps1          برگرداندن VM به حالت بدون پروژه (make vm-clean)
 └── tests/test_devtools.py     آزمون خود این ابزارها
 ```
 پوشه‌های محلی که در git نمی‌روند: `dev/vm/.ssh/`، `dev/vm/cache/`، `dev/artifacts/`، `dev/bin/`.

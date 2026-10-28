@@ -53,12 +53,16 @@ Chain Proxy یک **هماهنگ‌کننده** (orchestrator) روی هسته‌
 | `chain.py` | تمام منطق: پارس، کانفیگ، هسته، پروکسی ویندوز، نگهبان، کنترل، CLI. |
 | `gui.py` | پنجره‌ی tkinter؛ لایه‌ی نازک روی `chain.App`. |
 | `config.json` | تنظیمات کاربر (روی پیش‌فرض‌های `DEFAULTS` ادغام می‌شود). |
+| `LICENSE` | MIT. |
+| `subs.example.txt` | قالب `subs.txt` (خط اول نمونه، خط دوم لیست best از GeminiRoute). |
 | `subs.txt` | خط اول = ساپسکریپشن A، خط دوم = B. `#` توضیح است. **در گیت نیست** (`.gitignore`)؛ اگر نباشد از قالب `subs.example.txt` ساخته می‌شود و بسته‌ی انتشار (`make package`) هم همیشه همین قالب را به‌جای فایل کاربر می‌گذارد. |
-| `next.bat`, `stop.bat`, `start.bat` | میانبرهای CLI (`next`, `off`, `Run.bat cli`). |
+| `next.bat`, `stop.bat`, `start.bat` | میانبرهای CLI (`next`, `off`, `Run.bat cli`). `next.bat` و `stop.bat` خودشان Python را می‌یابند (`%LOCALAPPDATA%\Programs\Python`، بعد `py -3`، بعد `python`) و به PATH وابسته نیستند؛ حذف‌کننده‌ی نصب‌کننده هم از `stop.bat` استفاده می‌کند. |
 | `chainproxy.ico` | آیکون میانبر و پنجره. |
-| `offline/` | فایل‌های جایگزین دانلود (نصب‌کننده‌ی Python، zip هسته). |
+| `offline/` | فایل‌های جایگزین دانلود (نصب‌کننده‌ی Python، zip هسته). نصب‌کننده‌ی Full این پوشه را پر می‌کند. |
+| `installer/` | اسکریپت Inno Setup (`chainproxy.iss`) و `THIRD-PARTY-NOTICES.txt` نسخه‌ی Full. ساخت: `make installer` (داخل VM). |
+| `docs/` | `QUICKSTART.md` + PDF آن (`make pdf`)، `USER-GUIDE.md`، `DEVELOPER.md`. |
 | `tests/` | `run_tests.py`، `gui_smoke.py` و `mock_core.py` (بخش ۱۱). |
-| `dev/` | ابزار توسعه (در بسته‌ی کاربر نیست): آزمایشگاه e2e (`dev/lab/`)، راننده‌ی VM ویندوز (`dev/vm/`)، `setup-cachyos.sh`، `package.py`. راهنما: [dev/README.md](../dev/README.md). |
+| `dev/` | ابزار توسعه (در بسته‌ی کاربر نیست): آزمایشگاه e2e (`dev/lab/`)، راننده‌ی VM ویندوز (`dev/vm/`)، `setup-cachyos.sh`، `package.py`، `make_pdf.py`، `make_installer.py`. راهنما: [dev/README.md](../dev/README.md). |
 | `Makefile`, `CLAUDE.md`, `.claude/` | فرمان‌های توسعه و تنظیمات Claude Code. |
 | **تولیدشده در زمان اجرا** | |
 | `core/` | `sing-box.exe` و DLLهای همراه. |
@@ -286,13 +290,14 @@ idempotent است (`cleaned`)، `stop_evt` را set می‌کند، سرور ک�
 | VM ویندوز | `make vm-all` | ویندوز واقعی: `setup.ps1`، نصب Python، میانبرها، رجیستری، GUI روی دسکتاپ، sing-box ویندوزی |
 
 ### ۱۱.۱ آزمون‌های واحد
-۲۱ آزمون بدون هسته‌ی واقعی، شبکه یا ویندوز. هر اجرا پروژه را در پوشه‌ی موقت کپی می‌کند، ساپسکریپشن نمونه می‌نویسد و `CHAIN_CORE` را به `tests/mock_core.py` می‌دهد (`core_cmd()` هسته‌ی `.py` را با همان Python اجرا می‌کند؛ روی ویندوز هم). پورت‌ها: `20808/20090/20091`.
+۲۹ آزمون بدون هسته‌ی واقعی، شبکه یا ویندوز. هر اجرا پروژه را در پوشه‌ی موقت کپی می‌کند، ساپسکریپشن نمونه می‌نویسد و `CHAIN_CORE` را به `tests/mock_core.py` می‌دهد (`core_cmd()` هسته‌ی `.py` را با همان Python اجرا می‌کند؛ روی ویندوز هم). پورت‌ها: `20808/20090/20091`.
 
 | گروه | چه چیزی را می‌سنجد |
 |---|---|
 | `ParsingTests` | هر پروتکل/ترنسپورت، ورودی‌های خراب، base64 در برابر متن ساده، تشخیص لینک نمونه |
 | `ConfigTests` | ساختار زنجیره (`detour`)، ترتیب selector، قوانین مسیر، `private_direct`، فقط‌لوکال‌بودن inbound، modern/legacy، اجرای هسته‌ی `.py` |
 | `SessionTests` | جریان کامل: رتبه‌بندی (زنجیره ← B ← A)، حذف نود رد‌شده توسط هسته و مسیر شکست‌خورده، next/prev/go_to، سوکت کنترل، fallback به legacy، ری‌استارت هسته، خطای لینک نمونه |
+| `RobustnessTests` | آدرس بدون scheme، فرمت پاسخ سرویس‌های geo و fallback، `rank_by_speed`، نگهبان (`guard`)، BOM، ساخت `subs.txt` از قالب، نبودن اشتراک کاربر در zip |
 | `InstallerTests` | عدم تطابق چک‌سام، استخراج، fallback ریدایرکت، ترجیح بسته‌ی آفلاین (بدون شبکه) |
 
 **رفتار `mock_core.py`:** `version` و `check` را پیاده می‌کند (رد `a3.test`؛ با `MOCK_OLD=1` رد `dns`)، و Clash API کمینه (`/version`, `/proxies/<tag>/delay`, `PUT /proxies/route`). تگ‌هایی که شامل `A2` باشند تاخیرشان شکست می‌خورد.
@@ -304,6 +309,8 @@ idempotent است (`cleaned`)، `stop_evt` را set می‌کند، سرور ک�
 
 ### ۱۱.۳ VM ویندوز (`dev/vm/vmtest.py`)
 مراحل: `deploy` → `install` (اجرای واقعی `setup.ps1`: Python، sing-box، میانبرها، اجرای دوم) → `unit` (همان آزمون‌های واحد روی ویندوز) → `e2e` (آزمایشگاه روی میزبان، کلاینت در VM) → `gui` (`gui_smoke.py` و پنجره‌ی واقعی روی دسکتاپ کاربر با اسکرین‌شات). خروجی‌ها در `dev/artifacts/vm-latest/`.
+
+`make vm-installer` / `vm-installer-full` (با `--python full|notk`) نصب‌کننده‌ی ساخته‌شده را روی VM آزمایش می‌کنند: نصب، اجرای اول، ارتقا، حذف. `make vm-clean` VM را به حالت «بدون پروژه، Python و Inno Setup» برمی‌گرداند.
 
 ### آنچه هنوز پوشش داده نمی‌شود
 - ساپسکریپشن‌ها و نودهای واقعی کاربر (پروتکل‌های غیر از shadowsocks فقط در آزمون‌های واحد و `sing-box check` سنجیده می‌شوند).

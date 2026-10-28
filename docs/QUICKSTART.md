@@ -10,6 +10,8 @@
 2. روی **`Run.bat`** دوبل‌کلیک کنید. اولین بار خودش Python و sing-box را می‌گیرد (چند دقیقه) و یک میانبر **Chain Proxy** روی دسکتاپ می‌سازد.
 3. پنجره‌ی **Settings** باز می‌شود: لینک ساپسکریپشن خودتان را در «Subscription 1» بگذارید و **Save** بزنید. «Subscription 2» به‌طور پیش‌فرض لیست عمومی **best** پروژه‌ی [GeminiRoute](https://github.com/alizn7/GeminiRoute) است (`https://alizn7.github.io/GeminiRoute/sub/best.txt`)؛ می‌توانید همان را نگه دارید یا لینک دیگری بگذارید.
 
+> اگر Python از قبل روی سیستم باشد، همان استفاده می‌شود و Python دومی نصب نمی‌شود.
+
 > دانلود مسدود است؟ فایل‌های Python و sing-box را در پوشه‌ی `offline` بگذارید (راهنما: `offline\README.txt`).
 
 ## ۲. استفاده‌ی روزانه

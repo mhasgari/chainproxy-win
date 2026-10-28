@@ -978,8 +978,13 @@ def cmd_installer(a):
         die("VM not reachable over ssh (vmtest.py doctor)")
     say(f"copying {name} to the VM")
     scp_to(ROOT / "dist" / name, name)
-    rc, out = run_guest_script("installer-test.ps1", Setup=name, Full=full)
-    return summarize([{"stage": "installer" + ("-full" if full else ""), "result": "PASS" if rc == 0 else "FAIL",
+    if a.python:
+        py = cached(f"python-{CONF['PY_VERSION']}-amd64.exe")
+        if not py:
+            die("python installer is not in dev/vm/cache: run `make vm-fetch`")
+        scp_to(py, "python-pre.exe")
+    rc, out = run_guest_script("installer-test.ps1", Setup=name, Full=full, PrePython=a.python)
+    return summarize([{"stage": "installer" + ("-full" if full else "") + (f"+py-{a.python}" if a.python else ""), "result": "PASS" if rc == 0 else "FAIL",
                        "seconds": 0}])
 
 
@@ -1123,6 +1128,8 @@ def main():
     cl.add_argument("--keep-tools", action="store_true", help="keep Python and Inno Setup (faster next run)")
     ins = sub.add_parser("installer")
     ins.add_argument("--full", action="store_true", help="test the Full installer (Python + sing-box inside)")
+    ins.add_argument("--python", choices=["full", "notk"], default="",
+                     help="install a Python first: 'full' = working one (must be reused), 'notk' = without tkinter")
     sub.add_parser("shell")
     p = sub.add_parser("ps")
     p.add_argument("command")

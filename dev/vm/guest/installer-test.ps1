@@ -1,7 +1,9 @@
 # Test of a built installer inside the VM: run by `vmtest.py installer`. ASCII only.
 #   $Setup : file name of the installer in the user's home directory
 #   $Full  : the "Full" installer (Python + sing-box inside)
-param([string]$Setup, [bool]$Full = $false)
+#   $PrePython : '' (clean machine), 'full' (a working Python exists first) or 'notk' (a Python
+#                WITHOUT tkinter exists first: setup.ps1 must still end up with a working one)
+param([string]$Setup, [bool]$Full = $false, [string]$PrePython = '')
 $ErrorActionPreference = 'Continue'
 $ProgressPreference = 'SilentlyContinue'
 $script:Failures = 0
@@ -16,6 +18,15 @@ $desk = [Environment]::GetFolderPath('Desktop') + '\Chain Proxy.lnk'
 $ie = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings'
 $proxyBefore = (Get-ItemProperty $ie).ProxyEnable
 
+if ($PrePython) {
+    Say "pre-existing Python ($PrePython)"
+    $tk = if ($PrePython -eq 'notk') { 'Include_tcltk=0' } else { 'Include_tcltk=1' }
+    $pp = Start-Process "$HOME\python-pre.exe" -ArgumentList '/quiet', 'InstallAllUsers=0', 'PrependPath=1', $tk, 'Include_launcher=0', 'Include_test=0', 'Include_doc=0', 'Shortcuts=0' -Wait -PassThru
+    Check ($pp.ExitCode -eq 0) "pre-existing Python installed ($($pp.ExitCode))"
+    $pre = Get-ChildItem "$env:LOCALAPPDATA\Programs\Python\Python3*\python.exe" | Select-Object -First 1
+    & $pre.FullName -c "import tkinter" 2>$null
+    Check (($LASTEXITCODE -eq 0) -eq ($PrePython -eq 'full')) "pre-existing Python has tkinter: $($LASTEXITCODE -eq 0)"
+}
 Say "install ($Setup)"
 $p = Start-Process $s -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/TASKS=desktopicon', "/LOG=$HOME\installer-inno.log" -Wait -PassThru
 Check ($p.ExitCode -eq 0) "installer exit code ($($p.ExitCode))"
@@ -40,6 +51,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$app\setup.ps1" shortcut
 Check ($LASTEXITCODE -eq 0) "setup.ps1 exit code ($LASTEXITCODE, $([int]$sw.Elapsed.TotalSeconds)s)"
 $py = Get-ChildItem "$env:LOCALAPPDATA\Programs\Python\Python3*\python.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
 Check ([bool]$py) 'Python is installed'
+$pyCount = @(Get-ChildItem "$env:LOCALAPPDATA\Programs\Python\Python3*\python.exe" -ErrorAction SilentlyContinue).Count
+if ($PrePython -eq 'full') { Check ($pyCount -eq 1) 'the existing Python was reused (no second Python)' }
 Check (Test-Path "$app\core\sing-box.exe") 'sing-box is installed'
 if ($py) {
     $v = & $py.FullName "$app\chain.py" ensure
@@ -47,6 +60,11 @@ if ($py) {
     & $py.FullName -c "import tkinter" 2>$null
     Check ($LASTEXITCODE -eq 0) 'tkinter works'
 }
+
+$o = cmd /c "`"$app\stop.bat`" 2>&1"
+Check ($LASTEXITCODE -eq 0 -and ($o -join ' ') -match 'not running') "stop.bat finds Python and reports not running ($($o -join ' '))"
+$o = cmd /c "`"$app\next.bat`" 2>&1"
+Check ($LASTEXITCODE -eq 0 -and ($o -join ' ') -match 'not running') 'next.bat finds Python and reports not running'
 
 Say "upgrade keeps user data"
 Set-Content "$app\subs.txt" 'https://my.real.link/x' -Encoding ASCII

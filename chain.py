@@ -14,7 +14,7 @@ Usage:
     python chain.py ensure          make sure a working sing-box is installed
     python chain.py install-core    (re)download sing-box.exe into ./core
 """
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 
 import atexit
 import base64
