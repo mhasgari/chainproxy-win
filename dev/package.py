@@ -17,7 +17,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE = ["Run.bat", "setup.ps1", "chain.py", "gui.py", "config.json", "subs.example.txt",
            "start.bat", "next.bat", "stop.bat", "chainproxy.ico", "README.md",
-           "docs/QUICKSTART.md", "docs/USER-GUIDE.md", "docs/DEVELOPER.md", "offline/README.txt"]
+           "docs/QUICKSTART.md", "docs/Chain-Proxy-Quick-Start-fa.pdf", "docs/USER-GUIDE.md",
+           "docs/DEVELOPER.md", "offline/README.txt", "LICENSE"]
 WIN_SCRIPTS = [".bat", ".cmd", ".ps1"]
 
 
@@ -45,6 +46,18 @@ def check():
         print("FAIL ", b)
     print("windows script rules:", "FAIL" if bad else "ok")
     return 1 if bad else 0
+
+
+def stage(dest):
+    """Copy the release files (CRLF for Windows scripts, placeholder subs.txt) into dest."""
+    for rel in RELEASE:
+        src = ROOT / rel
+        data = src.read_bytes()
+        if src.suffix.lower() in WIN_SCRIPTS:
+            data = re.sub(rb"\r?\n", b"\r\n", data)
+        (dest / rel).parent.mkdir(parents=True, exist_ok=True)
+        (dest / rel).write_bytes(data)
+    (dest / "subs.txt").write_bytes((ROOT / "subs.example.txt").read_bytes())
 
 
 def build():

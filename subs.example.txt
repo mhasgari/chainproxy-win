@@ -1,5 +1,6 @@
-# خط اول: لینک ساپسکریپشن اول (هاپ اول / نزدیک به کاربر)
+# خط اول: لینک ساپسکریپشن اول (هاپ اول / نزدیک به کاربر) - لینک خودتان را جایگزین کنید
 # خط دوم: لینک ساپسکریپشن دوم (هاپ آخر / آی‌پی خروجی)
+#   پیش‌فرض: لیست «best» پروژه‌ی GeminiRoute (عمومی، هر ساعت بازسازی می‌شود): https://github.com/alizn7/GeminiRoute
 # خطوط خالی و خطوطی که با # شروع شوند نادیده گرفته می‌شوند.
 https://example.com/sub/first
-https://example.com/sub/second
+https://alizn7.github.io/GeminiRoute/sub/best.txt

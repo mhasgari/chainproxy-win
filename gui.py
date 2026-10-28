@@ -220,24 +220,27 @@ class GUI:
     def settings(self):
         win = tk.Toplevel(self.root)
         win.title("Settings")
-        win.geometry("560x430")
+        win.geometry("600x470")
         win.transient(self.root)
         cfg = chain.load_cfg()
         srcs = chain.SUBS_FILE.read_text(encoding="utf-8-sig").splitlines() if chain.SUBS_FILE.exists() else []
         srcs = [l.strip() for l in srcs if l.strip() and not l.startswith("#")] + ["", ""]
+        if "example.com/sub/" in srcs[0]:         # the template's placeholder: show an empty field
+            srcs[0] = ""
 
         def row(label):
-            ttk.Label(win, text=label).pack(anchor="w", padx=10, pady=(8, 0))
+            ttk.Label(win, text=label, justify="left").pack(anchor="w", padx=10, pady=(8, 0))
 
         row("Subscription 1 (first hop):")
         e1 = ttk.Entry(win)
         e1.insert(0, srcs[0])
         e1.pack(fill="x", padx=10)
-        row("Subscription 2 (exit hop):")
+        row("Subscription 2 (exit hop) - default: GeminiRoute \"best\" (github.com/alizn7/GeminiRoute):")
         e2 = ttk.Entry(win)
         e2.insert(0, srcs[1])
         e2.pack(fill="x", padx=10)
-        row("Strict sites - one URL per line (a route must reach them with status < 400):")
+        row("Strict sites - one per line, e.g. gemini.google.com (https:// is added if you omit it;\n"
+            "type http:// only if needed). A route must reach each with status < 400:")
         t = tk.Text(win, height=5)
         t.insert("1.0", "\n".join(cfg["strict_urls"]))
         t.pack(fill="x", padx=10)

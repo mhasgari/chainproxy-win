@@ -142,6 +142,9 @@ class ParsingTests(unittest.TestCase):
     def test_placeholder_detection(self):
         self.assertTrue(self.chain.subs_are_placeholder(["https://example.com/sub/first"]))
         self.assertFalse(self.chain.subs_are_placeholder(["https://real.host/x"]))
+        # the template: placeholder first link + the default (real) second link
+        self.assertTrue(self.chain.subs_are_placeholder(["https://example.com/sub/first", "https://alizn7.github.io/GeminiRoute/sub/best.txt"]))
+        self.assertFalse(self.chain.subs_are_placeholder(["https://real.host/x", "https://example.com/sub/second"]))
 
 
 class ConfigTests(unittest.TestCase):

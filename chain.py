@@ -14,7 +14,7 @@ Usage:
     python chain.py ensure          make sure a working sing-box is installed
     python chain.py install-core    (re)download sing-box.exe into ./core
 """
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 import atexit
 import base64
@@ -328,7 +328,8 @@ def subs_are_placeholder(lines=None):
             return True
         lines = [l.strip() for l in SUBS_FILE.read_text(encoding="utf-8-sig").splitlines()]
         lines = [l for l in lines if l and not l.startswith("#")]
-    return not lines or all("example.com/sub/" in l for l in lines)
+    # the template ships a real second link (GeminiRoute best); only the FIRST one must be replaced
+    return not lines or "example.com/sub/" in lines[0]
 
 
 def tcp_ms(ob, timeout):
