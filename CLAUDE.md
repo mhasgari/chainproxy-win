@@ -9,7 +9,7 @@ The user writes in Persian. Answer in Persian; keep code, comments, UI strings a
 messages in English (Windows consoles mangle RTL text). End-user and developer docs are
 Persian (`docs/`, `dev/README.md`).
 
-## Verified state (last full run on a real Windows 11 VM, 2026-10-31; version 1.3.0)
+## Verified state (last full run on a real Windows 11 VM, 2026-10-31; version 1.3.1)
 `make vm-all`: deploy, install, unit (39), e2e (29 checks, real sing-box, lab logs prove
 VM -> A -> B1) and gui all PASS. Real subscriptions were run once by hand in the VM (download, rank, traffic through the chain, abrupt-kill recovery). Not yet verified: Chrome itself, a Windows 10 VM, a clean-machine first run without the `offline/` files.
 
@@ -69,6 +69,7 @@ This project is indexed as `home-hadi-projects-chainproxy-win` (git-watch keeps 
 - `subs.txt` holds the user's REAL links: git-ignored, never commit/pack it (`subs.example.txt` is the tracked template; chain.py creates `subs.txt` from it). `make vm-all` overwrites the VM copy with lab links: `make vm-deploy` again before a real-subscription run.
 - Lantern: the engine is `dev/lantern/chainlantern/main.go` built INSIDE radiance (`novpn` tag = SOCKS inbound, no TUN/admin/IPC pipe). First hop priority 1, then subscription, then profiles; exit hop: subscription, then profiles (tiers in `App.tier`). The engine zip lives in the `engine-<commit>` GitHub release (pre-release) and its sha256 is pinned in `LANTERN_ENGINE`.
 - Window icon: use `iconphoto` ONLY. `iconbitmap` + `iconphoto` together shows the Python logo on Windows 11 (verified by screenshot). Closing the window hides it in the tray (`tray.py`); only the tray's Exit quits. `quit.bat` = off + close the tray window (installer/updater use it).
+- Gemini strict check reads the page body: Google can answer 200 with the "not available in your location" app when it places the exit IP in IR (ipinfo may say DE). `google_country()` parses `"XX","ZZ"` from WIZ_global_data (~135 KB in).
 - `fetch_nodes` must go through `http_get` (TLS fallback): 1.2.2 only fixed `http_get` and the subscription download still failed on the PC with the old root store.
 - Windows crash safety: sing-box runs in a kill-on-close Job Object and `chain.py guard <pid>` restores the proxy if the app dies; test with `Stop-Process -Force` in the VM.
 - Unit tests that start a session on Windows touch the REAL registry: register `env.close` FIRST (`addCleanup`) so `app.cleanup()` still finds `.proxy_state.json`.

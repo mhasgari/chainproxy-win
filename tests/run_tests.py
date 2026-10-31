@@ -391,6 +391,70 @@ class RobustnessTests(unittest.TestCase):
         self.assertEqual(cfg["api_port"], d["api_port"])
         self.assertEqual(cfg["gui_port"], 31337)         # a deliberate custom value stays
 
+    def test_geo_lookup_does_not_wait_for_a_slow_provider(self):
+        chain = self.chain
+        orig = chain.via_proxy
+
+        def fake(url, port, timeout):
+            if "slow" in url:
+                time.sleep(3)
+                return None, b""
+            return 200, b'{"ip": "9.9.9.9", "country": "DE", "org": "X"}'
+        chain.via_proxy = fake
+        self.addCleanup(setattr, chain, "via_proxy", orig)
+        cfg = dict(chain.DEFAULTS, geo_url="https://slow.test/", geo_fallback_urls=["https://ok.test/"])
+        t0 = time.time()
+        geo = chain.geo_lookup(cfg)
+        self.assertLess(time.time() - t0, 2)
+        self.assertEqual(geo[0], "9.9.9.9")
+
+    def test_gemini_page_with_unsupported_country_is_rejected(self):
+        chain = self.chain
+        page = b'x' * 70000 + b'"vXmutd":"%.@.\\"IR\\",\\"ZZ\\",\\"o3vBBw\\\\u003d\\"]"'
+        self.assertEqual(chain.google_country(page), "IR")
+        self.assertEqual(chain.google_country(page.replace(b"IR", b"DE")), "DE")
+        self.assertIsNone(chain.google_country(b"<html>no country</html>"))
+        orig = chain.via_proxy
+        seen = {}
+
+        def fake(url, port, timeout=12, limit=65536, until=None):
+            seen["limit"] = limit
+            return 200, page
+        chain.via_proxy = fake
+        self.addCleanup(setattr, chain, "via_proxy", orig)
+        cfg = dict(chain.DEFAULTS, geo_url="", strict_urls=["https://gemini.google.com"],
+                   blocked_countries=["IR"])
+        ok, info = chain.verify(cfg)
+        self.assertFalse(ok)
+        self.assertIn("Google places this exit in IR", info)
+        self.assertGreater(seen["limit"], 135000)            # the country sits ~135 KB into the page
+        page = page.replace(b"IR", b"DE")
+        self.assertTrue(chain.verify(cfg)[0])
+
+    def test_via_proxy_stops_reading_at_the_marker(self):
+        import http.server
+        body = b"a" * 100000 + b'%.@.\\"DE\\",\\"ZZ\\"' + b"b" * 400000
+
+        class H(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                try:
+                    self.wfile.write(body)
+                except OSError:
+                    pass
+
+            def log_message(self, *a):
+                pass
+        srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), H)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        self.addCleanup(srv.shutdown)
+        st, got = self.chain.via_proxy("http://x.test/", srv.server_address[1], 5, 300000, self.chain.GOOGLE_COUNTRY)
+        self.assertEqual(st, 200)
+        self.assertLess(len(got), 200000)
+        self.assertEqual(self.chain.google_country(got), "DE")
+
     def test_profiles_and_source_priority_tiers(self):
         env = self.env
         (env.proj / "profiles_first.txt").write_text(

@@ -3,6 +3,7 @@
 import json
 import os
 import queue
+import re
 import socket
 import sys
 import threading
@@ -23,6 +24,22 @@ FONT = "Segoe UI"
 APP_ID = "mhasgari.ChainProxy"
 
 MENU_SHOW, MENU_TOGGLE, MENU_NEXT, MENU_UPDATE, MENU_EXIT = 1, 2, 3, 4, 5
+
+
+def rejected_short(why):
+    """Short reason for the route list: 'Google sees exit in IR', 'gemini: no answer', 'gemini: 403'."""
+    why = str(why)
+    m = re.search(r"places this exit in ([A-Z]{2})", why)
+    if m:
+        return f"Google sees exit in {m.group(1)}"
+    if why.startswith("exit in blocked country"):
+        return "blocked country"
+    if " -> " in why:
+        site, rest = why.split(" -> ", 1)
+        host = site.replace("https://", "").replace("http://", "").split("/")[0]
+        host = host[4:] if host.startswith("www.") else host
+        return host.split(".")[0] + ": " + rest.split(" (")[0]
+    return why[:30]
 
 
 def clean(text):
@@ -57,7 +74,7 @@ class GUI:
         self.cfg = chain.load_cfg()
 
         root.title("Chain Proxy")
-        root.geometry("780x700")
+        root.geometry("900x700")
         root.minsize(660, 560)
         root.configure(bg=BG)
         root.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -199,14 +216,16 @@ class GUI:
         box.pack(fill="both", expand=True, pady=(4, 10))
         inner = ttk.Frame(box)
         inner.pack(fill="both", expand=True, padx=1, pady=1)
-        cols = ("n", "ms", "route", "src")
+        cols = ("n", "ms", "route", "src", "status")
         self.tree = ttk.Treeview(inner, columns=cols, show="headings", selectmode="browse", height=8)
-        for c, title, w, anchor in (("n", "#", 46, "center"), ("ms", "ms", 64, "e"),
-                                    ("route", "Route", 330, "w"), ("src", "Source", 240, "w")):
+        for c, title, w, anchor in (("n", "#", 40, "center"), ("ms", "ms", 56, "e"),
+                                    ("route", "Route", 260, "w"), ("src", "Source", 205, "w"),
+                                    ("status", "Status", 210, "w")):
             self.tree.heading(c, text=title, anchor="w" if anchor == "w" else "center")
-            self.tree.column(c, width=w, anchor=anchor, stretch=(c == "route"))
+            self.tree.column(c, width=w, anchor=anchor, stretch=(c in ("route", "status")))
         self.tree.tag_configure("active", background=OK_LT, foreground="#14532d", font=(FONT, 10, "bold"))
         self.tree.tag_configure("odd", background="#f8fafd")
+        self.tree.tag_configure("bad", foreground="#9a3412")
         sb = ttk.Scrollbar(inner, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=sb.set)
         sb.pack(side="right", fill="y")
@@ -358,9 +377,13 @@ class GUI:
             return
         for i, t in enumerate(app.rank):
             tags = ["active"] if i == app.idx else (["odd"] if i % 2 else [])
+            why = app.rejected.get(t)
+            if why and i != app.idx:
+                tags = ["bad"]
+            state = f"rejected: {clean(rejected_short(why))}" if why and i != app.idx else ""
             self.tree.insert("", "end", iid=str(i), tags=tags, values=(
                 (">" if i == app.idx else "") + str(i + 1), f"{app.delays[t]:.0f}", clean(app.label(t)),
-                app.source_label(t)))
+                app.source_label(t), state))
         self.tree.yview_moveto(top)
         if app.idx >= 0:
             self.tree.selection_remove(*self.tree.selection())      # the green row is the marker, not a selection

@@ -68,6 +68,10 @@ def main():
               and "active" not in g.tree.item("0", "tags"),
               f"picked route is marked in the list ({g.tree.set('2', 'n')!r}, {g.tree.item('2', 'tags')})")
         check(bool(g.tree.set("2", "src")), f"source column filled ({g.tree.set('2', 'src')!r})")
+        r = gui.rejected_short("https://gemini.google.com -> no answer (1.2.3.4 JP)")
+        check(r == "gemini: no answer", f"short reject reason ({r!r})")
+        r = gui.rejected_short("https://gemini.google.com -> Google places this exit in IR (location not supported) (x)")
+        check(r == "Google sees exit in IR", f"short Google reason ({r!r})")
         g.logbox.tag_add("sel", "1.0", "end")                  # selecting log text must not clear it
         g.root.update()
         check("active" in g.tree.item("2", "tags"), "the active-route marker survives selecting log text")

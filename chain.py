@@ -15,7 +15,7 @@ Usage:
     python chain.py ensure          make sure a working sing-box is installed
     python chain.py install-core    (re)download sing-box.exe into ./core
 """
-__version__ = "1.3.0"
+__version__ = "1.3.1"
 
 import atexit
 import base64
@@ -38,7 +38,7 @@ import urllib.error
 import urllib.parse as up
 import urllib.request as ur
 import zipfile
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 BASE = Path(__file__).resolve().parent
@@ -61,7 +61,8 @@ DEFAULTS = {
     "mixed_port": 42815,
     "api_port": 42816,
     "control_port": 42817,
-    "top_k": 5,                      # how many nodes from each list to try
+    "top_k": 5,                      # how many nodes of the first-hop subscription to try
+    "top_k_exit": 12,                # how many nodes of the exit-hop subscription (many of them are dead or slow)
     "tcp_timeout": 3.0,
     "delay_timeout_ms": 7000,
     "check_urls": ["https://www.gstatic.com/generate_204",
@@ -341,14 +342,16 @@ def subscription_sources():
 
 def load_profiles(path, label):
     """Standard v2ray links (vless:// vmess:// trojan:// ss:// hysteria2://), one per line."""
-    nodes, seen = [], set()
+    nodes, seen, bad = [], set(), 0
     for line in read_lines(path):
         n = parse_node(line)
-        if n and node_key(n[1]) not in seen:
+        if not n:
+            bad += 1
+        elif node_key(n[1]) not in seen:
             seen.add(node_key(n[1]))
             nodes.append(n)
-    if nodes:
-        log(f"[{label}] {len(nodes)} profile(s)")
+    if nodes or bad:
+        log(f"[{label}] {len(nodes)} profile(s)" + (f", {bad} line(s) not recognized (skipped)" if bad else ""))
     return nodes
 
 
@@ -1083,17 +1086,37 @@ def sys_proxy_restore():
 # --------------------------------------------------------------------------
 # verification through the proxy
 # --------------------------------------------------------------------------
-def via_proxy(url, port, timeout=12):
+def via_proxy(url, port, timeout=12, limit=65536, until=None):
+    """(status, first bytes of the body). `until` (a compiled bytes regex) stops reading as soon
+    as it matches, so a big page is not downloaded further than needed."""
     px = f"http://127.0.0.1:{port}"
     op = ur.build_opener(ur.ProxyHandler({"http": px, "https": px}))
     try:
         with op.open(ur.Request(url, headers={"User-Agent": UA}), timeout=timeout) as r:
-            return r.status, r.read(65536)
+            if until is None:
+                return r.status, r.read(limit)
+            buf = b""
+            while len(buf) < limit and not until.search(buf):
+                chunk = r.read(16384)
+                if not chunk:
+                    break
+                buf += chunk
+            return r.status, buf
     except urllib.error.HTTPError as e:
         e.close()
         return e.code, b""
     except Exception:
         return None, b""
+
+
+GOOGLE_COUNTRY = re.compile(rb'%\.@\.\\"([A-Z]{2})\\",\\"ZZ\\"')
+
+
+def google_country(body):
+    """Country Google itself assigns to the exit IP, read from the page of a Google service
+    (WIZ_global_data holds it as "XX","ZZ"). None when the page has no such value."""
+    m = GOOGLE_COUNTRY.search(body or b"")
+    return m.group(1).decode() if m else None
 
 
 def parse_geo(body):
@@ -1109,16 +1132,27 @@ def parse_geo(body):
 
 
 def geo_lookup(cfg):
-    """Exit IP/country through the active route; the first provider that answers wins."""
-    for url in [cfg.get("geo_url")] + list(cfg.get("geo_fallback_urls", [])):
-        if not url:
-            continue
+    """Exit IP/country through the active route. The providers are asked in parallel (a slow or
+    blocked one must not delay the others); the first valid answer wins."""
+    urls = [u for u in [cfg.get("geo_url")] + list(cfg.get("geo_fallback_urls", [])) if u]
+    if not urls:
+        return None
+
+    def one(url):
         st, body = via_proxy(url, cfg["mixed_port"], min(cfg["verify_timeout"], 8))
         if st == 200:
             try:
                 return parse_geo(body)
             except Exception:
                 pass
+        return None
+    ex = ThreadPoolExecutor(len(urls))
+    try:
+        for f in as_completed([ex.submit(one, u) for u in urls]):
+            if f.result():
+                return f.result()
+    finally:
+        ex.shutdown(wait=False)
     return None
 
 
@@ -1128,18 +1162,25 @@ def verify(cfg):
     strict = cfg["strict_urls"]
     with ThreadPoolExecutor(len(strict) + 1) as ex:
         geo_f = ex.submit(geo_lookup, cfg) if cfg.get("geo_url") else None
-        site_f = [(u, ex.submit(via_proxy, u, port, to)) for u in strict]
+        # a Gemini page can answer 200 yet be the "not available in your location" app: its
+        # country value sits ~135 KB into the page, so those pages are read further
+        site_f = [(u, ex.submit(via_proxy, u, port, to, **({"limit": 300000, "until": GOOGLE_COUNTRY} if "gemini.google" in u else {})))
+                  for u in strict]
         geo = geo_f.result() if geo_f else None
-        sites = [(u, f.result()[0]) for u, f in site_f]
+        sites = [(u, *f.result()) for u, f in site_f]
     info = "exit IP unknown"
     if geo:
         ip, cc, org = geo
         info = f"{ip} {cc or '??'} {org}".strip()
         if cc and cc in [c.upper() for c in cfg["blocked_countries"]]:
             return False, f"exit in blocked country ({info})"
-    for url, st in sites:
+    blocked = [c.upper() for c in cfg["blocked_countries"]]
+    for url, st, body in sites:
         if st is None or st >= 400:
             return False, f"{url} -> {'no answer' if st is None else st} ({info})"
+        seen = google_country(body) if "gemini.google" in url else None
+        if seen and seen in blocked:
+            return False, f"{url} -> Google places this exit in {seen} (location not supported) ({info})"
     return True, info
 
 
@@ -1153,6 +1194,7 @@ class App:
         self.names = {}
         self.rank = []          # ordered list of usable tags
         self.delays = {}
+        self.rejected = {}      # tag -> why the last verification of that route failed
         self.idx = -1
         self.stop_evt = threading.Event()
         self.cleaned = False
@@ -1193,6 +1235,7 @@ class App:
         chains = [f"{a}-{b}" for a in A for b in B]
         res = self.measure_all(chains + list(B) + list(A))
         self.delays = res
+        self.rejected = {}
 
         def key(t):      # priority tiers first (first hop, then exit hop), then speed
             return tuple(self.tier_of(p) for p in t.split("-")) + (res[t],)
@@ -1233,8 +1276,10 @@ class App:
                 if ok:
                     self.idx = i
                     self.last_info = info
+                    self.rejected.pop(tag, None)
                     return (f"[{i + 1}/{n}] {self.label(tag)}  "
                             f"{self.delays[tag]:.0f}ms  exit: {info}")
+                self.rejected[tag] = info
                 log(f"  skip {tag}: {info}")
             if 0 <= start < n:
                 self.core.select(self.rank[start])
@@ -1255,14 +1300,16 @@ class App:
             if ok:
                 self.idx = i
                 self.last_info = info
+                self.rejected.pop(tag, None)
                 return (f"[{i + 1}/{len(self.rank)}] {self.label(tag)}  "
                         f"{self.delays[tag]:.0f}ms  exit: {info}")
+            self.rejected[tag] = info
             if 0 <= prev < len(self.rank):
                 try:
                     self.core.select(self.rank[prev])
                 except Exception as e:
                     log("could not go back to the previous route:", e)
-            return f"route rejected: {info}"
+            return f"route rejected ({self.label(tag)}): {info}"
 
     def status(self):
         with LOCK:
@@ -1466,7 +1513,7 @@ def start_session(cfg):
         tcp = cfg["tcp_timeout"]
         A_sub = pick(A_nodes, cfg["top_k"], tcp, "A", validator) if A_nodes else {}
         A_prof = pick(prof_a, cfg["top_k_profiles"], tcp, "A", validator, start=101) if prof_a else {}
-        B_sub = pick(B_nodes, cfg["top_k"], tcp, "B", validator) if B_nodes else {}
+        B_sub = pick(B_nodes, cfg["top_k_exit"], tcp, "B", validator) if B_nodes else {}
         B_prof = pick(prof_b, cfg["top_k_profiles"], tcp, "B", validator, start=101) if prof_b else {}
         A, B, tier = {}, {}, {}
         if lantern:
