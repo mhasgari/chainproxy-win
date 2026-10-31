@@ -36,6 +36,7 @@
 | نشانه | کار |
 |---|---|
 | اینترنت بعد از بسته‌شدن ناگهانی کار نمی‌کند | برنامه را دوباره باز کنید (خودش تنظیمات را برمی‌گرداند) یا `stop.bat` را اجرا کنید. |
+| `download failed ... certificate has expired` | تاریخ/ساعت کامپیوتر و Windows Update را بررسی کنید؛ نسخه‌ی 1.2.2 به بعد خودکار با پشته‌ی TLS ویندوز دوباره تلاش می‌کند. |
 | `no route passed verification` | Strict sites یا کشورهای ممنوع را سبک‌تر کنید، یا Rescan بزنید. |
 | `port 10808 ... already in use` | برنامه‌ی دیگری آن پورت را دارد؛ آن را ببندید یا `mixed_port` را در `config.json` عوض کنید. |
 | `subs.txt has no real subscription links` | لینک‌ها را در Settings بگذارید. |

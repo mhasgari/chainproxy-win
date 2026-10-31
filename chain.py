@@ -14,7 +14,7 @@ Usage:
     python chain.py ensure          make sure a working sing-box is installed
     python chain.py install-core    (re)download sing-box.exe into ./core
 """
-__version__ = "1.2.1"
+__version__ = "1.2.2"
 
 import atexit
 import base64
@@ -26,6 +26,7 @@ import re
 import shutil
 import socket
 import socketserver
+import ssl
 import subprocess
 import sys
 import tempfile
@@ -447,16 +448,60 @@ def node_valid(ob):
     return ok
 
 
+def _is_tls_error(e):
+    return isinstance(getattr(e, "reason", e), ssl.SSLError) or "CERTIFICATE_VERIFY_FAILED" in str(e)
+
+
+def native_get(url, timeout=30):
+    """Download with the operating system's TLS stack instead of Python's: curl.exe on Windows 10+
+    (schannel + the Windows certificate store, which also fetches missing roots/intermediates, like a
+    browser or v2rayN does), else PowerShell's Invoke-WebRequest. Returns (bytes, final url)."""
+    out = Path(tempfile.mkdtemp(prefix="chain-dl-")) / "body"
+    flags = 0x08000000 if IS_WIN else 0                     # CREATE_NO_WINDOW
+    try:
+        curl = shutil.which("curl.exe" if IS_WIN else "curl")
+        if curl:
+            cmd = [curl, "-sS", "-L", "--fail", "--max-time", str(int(timeout)), "-A", UA,
+                   "-o", str(out), "-w", "%{url_effective}", url]
+            env = None
+        elif IS_WIN:
+            ps = ("[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; $ProgressPreference = 'SilentlyContinue'; "
+                  f"$r = Invoke-WebRequest -UseBasicParsing -TimeoutSec {int(timeout)} -UserAgent $env:CHAIN_UA -Uri $env:CHAIN_URL; "
+                  "[IO.File]::WriteAllBytes($env:CHAIN_OUT, $r.RawContentStream.ToArray()); "
+                  "$r.BaseResponse.ResponseUri.AbsoluteUri")
+            cmd = ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps]
+            env = dict(os.environ, CHAIN_URL=url, CHAIN_UA=UA, CHAIN_OUT=str(out))
+        else:
+            raise RuntimeError("no curl")
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 15, env=env, creationflags=flags)
+        if r.returncode != 0 or not out.exists():
+            raise RuntimeError((r.stderr or r.stdout or f"exit {r.returncode}").strip().splitlines()[-1][:200])
+        return out.read_bytes(), (r.stdout.strip().splitlines() or [url])[-1]
+    finally:
+        shutil.rmtree(out.parent, ignore_errors=True)
+
+
 def http_get(url, timeout=30, tries=3, binary=False):
     last = None
     for i in range(tries):
         try:
             with ur.urlopen(ur.Request(url, headers={"User-Agent": UA}), timeout=timeout) as r:
-                data = r.read()
-                return data if binary else data.decode("utf-8", "replace"), r.geturl()
+                data, final = r.read(), r.geturl()
         except Exception as e:
             last = e
-            time.sleep(1.5 * (i + 1))
+            if _is_tls_error(e):
+                # Python's certificate check failed (old/odd Windows root store, new CA chain ...):
+                # the OS stack usually still trusts the site, as it does for the browser
+                log("TLS check failed in Python; retrying with the Windows TLS stack:", url.split("?")[0])
+                try:
+                    data, final = native_get(url, timeout)
+                except Exception as e2:
+                    raise RuntimeError(f"download failed: {url} ({last}; Windows TLS stack: {e2}) - "
+                                       "check the date/time of this computer and run Windows Update") from None
+            else:
+                time.sleep(1.5 * (i + 1))
+                continue
+        return data if binary else data.decode("utf-8", "replace"), final
     raise RuntimeError(f"download failed: {url} ({last})")
 
 

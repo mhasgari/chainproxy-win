@@ -295,6 +295,59 @@ class RobustnessTests(unittest.TestCase):
         (self.env.proj / "config.json").write_text(json.dumps({"strict_urls": ["gemini.google.com", ""]}))
         self.assertEqual(self.chain.load_cfg()["strict_urls"], ["https://gemini.google.com"])
 
+    def test_expired_certificate_falls_back_to_the_os_tls_stack(self):
+        import ssl
+        import urllib.error
+        c = self.chain
+        real = c.ur.urlopen
+
+        def boom(*a, **k):
+            raise urllib.error.URLError(ssl.SSLCertVerificationError(1, "certificate verify failed: certificate has expired"))
+        c.ur.urlopen = boom
+        self.addCleanup(setattr, c.ur, "urlopen", real)
+        c.native_get = lambda url, timeout=30: (b"vless://x#n", "https://final.test/sub")
+        self.assertEqual(c.http_get("https://sub.test/a", tries=3), ("vless://x#n", "https://final.test/sub"))
+        self.assertEqual(c.http_get("https://sub.test/a", binary=True)[0], b"vless://x#n")
+
+        def fail(url, timeout=30):
+            raise RuntimeError("curl: (60) SSL certificate problem")
+        c.native_get = fail
+        with self.assertRaises(RuntimeError) as cm:
+            c.http_get("https://sub.test/a")
+        self.assertIn("Windows Update", str(cm.exception))
+        # an ordinary network error is NOT sent to the OS stack
+        c.ur.urlopen = lambda *a, **k: (_ for _ in ()).throw(urllib.error.URLError("refused"))
+        c.native_get = lambda *a, **k: self.fail("native_get must not run for a plain network error")
+        with self.assertRaises(RuntimeError):
+            c.http_get("https://sub.test/a", tries=1)
+
+    def test_native_get_follows_redirects(self):
+        import http.server
+        import shutil as sh
+        if not sh.which("curl"):
+            self.skipTest("curl not installed")
+
+        class H(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                if self.path == "/a":
+                    self.send_response(302)
+                    self.send_header("Location", "/b")
+                    self.end_headers()
+                else:
+                    self.send_response(200)
+                    self.end_headers()
+                    self.wfile.write(b"body-" + self.headers.get("User-Agent", "").encode())
+
+            def log_message(self, *a):
+                pass
+        srv = http.server.HTTPServer(("127.0.0.1", 0), H)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        self.addCleanup(srv.server_close)
+        self.addCleanup(srv.shutdown)
+        data, final = self.chain.native_get(f"http://127.0.0.1:{srv.server_port}/a", 10)
+        self.assertTrue(data.startswith(b"body-"))
+        self.assertTrue(final.endswith("/b"))
+
     def test_subs_txt_is_created_from_the_template(self):
         (self.env.proj / "subs.txt").unlink()
         self.assertTrue(self.chain.subs_are_placeholder())          # recreated, still the placeholder
