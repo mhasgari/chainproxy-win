@@ -9,9 +9,20 @@ The user writes in Persian. Answer in Persian; keep code, comments, UI strings a
 messages in English (Windows consoles mangle RTL text). End-user and developer docs are
 Persian (`docs/`, `dev/README.md`).
 
-## Verified state (last full run on a real Windows 11 VM, 2026-10-28)
-`make vm-all`: deploy, install, unit (27), e2e (29 checks, real sing-box, lab logs prove
+## Verified state (last full run on a real Windows 11 VM, 2026-10-31; version 1.3.0)
+`make vm-all`: deploy, install, unit (39), e2e (29 checks, real sing-box, lab logs prove
 VM -> A -> B1) and gui all PASS. Real subscriptions were run once by hand in the VM (download, rank, traffic through the chain, abrupt-kill recovery). Not yet verified: Chrome itself, a Windows 10 VM, a clean-machine first run without the `offline/` files.
+
+## Codebase index (codebase-memory-mcp) - use it first
+This project is indexed as `home-hadi-projects-chainproxy-win` (git-watch keeps it fresh; re-index with
+`index_repository(repo_path="/home/hadi/projects/chainproxy-win", mode="full")` if `index_status` says stale).
+- Start a new conversation with `/onboard` (loads the ADR, architecture, state) or at least
+  `manage_adr(project, mode="get")` - it holds the architecture notes, decisions, workflows and the release recipe.
+- Navigate with `search_graph` / `get_code_snippet` / `trace_path` / `get_architecture` / `detect_changes` instead of
+  reading whole files (chain.py is ~1200 lines). Use grep/Read for what the graph does not model: `.ps1`/`.bat`
+  (`clean.ps1` is only partly parsed), `.iss`, docs, Makefile targets, config values, comments.
+- Not indexed by design: `subs.txt` (real links), `dev/vm/vm.conf`, `.claude/`, `dist/`, `dev/artifacts/`.
+- After a notable change, update the ADR (`manage_adr mode=set_sections`) and the docs together.
 
 ## Layout
 - `chain.py` - all logic (parse, config, core, Windows proxy, watchdog, control socket, CLI)
@@ -31,6 +42,7 @@ VM -> A -> B1) and gui all PASS. Real subscriptions were run once by hand in the
 - `python3 dev/vm/vmtest.py ps "<PowerShell>"` - run one command in the VM
 - results: `dev/artifacts/vm-latest/` (summary.json, *.log, gui-*.png, lab evidence)
 - `make installer` / `python3 dev/make_installer.py` - builds `dist/ChainProxy-Setup-<ver>.exe` with Inno Setup 6 INSIDE the VM (installer/chainproxy.iss; Inno comes from github.com/jrsoftware/issrc releases, check its signature). `make pdf` rebuilds the quick-start PDF; rebuild BEFORE the zip/installer.
+- `make lantern` builds the Lantern engine zip (Go, pinned radiance commit, no C compiler needed for Windows); `make vm-lantern` runs the real engine in the VM (internet); `make vm-update` tests the self-update against a fake release server on the host.
 - `make vm-clean` - removes EVERYTHING the project put into the VM (test copy, installed app, installers, shortcuts, Python, Inno Setup, proxy settings; keeps sshd/key/autologon). `make vm-clean-light` keeps Python + Inno. `make vm-installer` / `vm-installer-full` test a built installer (install, first run, upgrade, uninstall); run `vm-clean` first for a true clean-machine test and again afterwards.
 - `/vm-test`, `/check`, `/release` slash commands wrap the above
 
@@ -55,6 +67,9 @@ VM -> A -> B1) and gui all PASS. Real subscriptions were run once by hand in the
 
 ## Gotchas
 - `subs.txt` holds the user's REAL links: git-ignored, never commit/pack it (`subs.example.txt` is the tracked template; chain.py creates `subs.txt` from it). `make vm-all` overwrites the VM copy with lab links: `make vm-deploy` again before a real-subscription run.
+- Lantern: the engine is `dev/lantern/chainlantern/main.go` built INSIDE radiance (`novpn` tag = SOCKS inbound, no TUN/admin/IPC pipe). First hop priority 1, then subscription, then profiles; exit hop: subscription, then profiles (tiers in `App.tier`). The engine zip lives in the `engine-<commit>` GitHub release (pre-release) and its sha256 is pinned in `LANTERN_ENGINE`.
+- Window icon: use `iconphoto` ONLY. `iconbitmap` + `iconphoto` together shows the Python logo on Windows 11 (verified by screenshot). Closing the window hides it in the tray (`tray.py`); only the tray's Exit quits. `quit.bat` = off + close the tray window (installer/updater use it).
+- `fetch_nodes` must go through `http_get` (TLS fallback): 1.2.2 only fixed `http_get` and the subscription download still failed on the PC with the old root store.
 - Windows crash safety: sing-box runs in a kill-on-close Job Object and `chain.py guard <pid>` restores the proxy if the app dies; test with `Stop-Process -Force` in the VM.
 - Unit tests that start a session on Windows touch the REAL registry: register `env.close` FIRST (`addCleanup`) so `app.cleanup()` still finds `.proxy_state.json`.
 - Use `make -j1`: unit tests and GUI smoke share ports and must not run in parallel.

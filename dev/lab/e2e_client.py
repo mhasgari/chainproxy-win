@@ -52,6 +52,8 @@ def client_config(lab_port, **extra):
         "geo_url": f"{base}/geo",
         "strict_urls": [f"{base}/strict"],
         "geo_fallback_urls": [],
+        "lantern_enabled": False,
+        "auto_update": False,
         "blocked_countries": ["IR"],
         "direct_suffixes": [],
         "private_direct": False,
@@ -130,7 +132,7 @@ def reg_write(values):
     ctypes.windll.wininet.InternetSetOptionW(0, 37, 0, 0)
 
 
-def reg_cmd(action, mixed_port=10808):
+def reg_cmd(action, mixed_port=42815):
     if not IS_WIN:
         return check(True, f"reg {action}: skipped (not Windows)")
     if action == "save":

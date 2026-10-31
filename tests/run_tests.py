@@ -57,7 +57,7 @@ class Env:
         self.dir = Path(tempfile.mkdtemp(prefix="chainproxy-test-"))
         self.proj = self.dir / "proj"
         shutil.copytree(PROJECT, self.proj, ignore=shutil.ignore_patterns(
-            "__pycache__", "cache", "runtime", "core", ".proxy_state.json", ".shortcuts_done",
+            "__pycache__", "cache", "runtime", "core", "engine", ".proxy_state.json", ".shortcuts_done",
             ".git", "dev", "dist", "artifacts", ".claude",
             # installers a VM deploy puts into offline/ must not leak into the installer tests
             "*.zip", "*.exe", "*.msi"))
@@ -66,7 +66,8 @@ class Env:
         (self.proj / "subs.txt").write_text(f"{self.dir / 'subA.txt'}\n{self.dir / 'subB.txt'}\n")
         (self.proj / "config.json").write_text(json.dumps({
             "mixed_port": 20808, "api_port": 20090, "control_port": 20091,
-            "top_k": 5, "tcp_timeout": 0.3, "watchdog_seconds": 0}))
+            "top_k": 5, "tcp_timeout": 0.3, "watchdog_seconds": 0,
+            "lantern_enabled": False, "strict_urls": []}))
         # a *.py core is run with the current Python by chain.core_cmd() on every OS
         os.environ["CHAIN_CORE"] = str(self.proj / "tests" / "mock_core.py")
         if old_core:
@@ -278,7 +279,7 @@ class SessionTests(unittest.TestCase):
         (env.proj / "subs.txt").write_text("https://example.com/sub/first\n")
         with self.assertRaises(SystemExit) as cm:
             env.chain.start_session(env.chain.load_cfg())
-        self.assertIn("no real subscription", str(cm.exception))
+        self.assertIn("no source configured", str(cm.exception))
 
 
 class RobustnessTests(unittest.TestCase):
@@ -305,11 +306,11 @@ class RobustnessTests(unittest.TestCase):
             raise urllib.error.URLError(ssl.SSLCertVerificationError(1, "certificate verify failed: certificate has expired"))
         c.ur.urlopen = boom
         self.addCleanup(setattr, c.ur, "urlopen", real)
-        c.native_get = lambda url, timeout=30: (b"vless://x#n", "https://final.test/sub")
+        c.native_get = lambda url, timeout=30, ua=None: (b"vless://x#n", "https://final.test/sub")
         self.assertEqual(c.http_get("https://sub.test/a", tries=3), ("vless://x#n", "https://final.test/sub"))
         self.assertEqual(c.http_get("https://sub.test/a", binary=True)[0], b"vless://x#n")
 
-        def fail(url, timeout=30):
+        def fail(url, timeout=30, ua=None):
             raise RuntimeError("curl: (60) SSL certificate problem")
         c.native_get = fail
         with self.assertRaises(RuntimeError) as cm:
@@ -347,6 +348,148 @@ class RobustnessTests(unittest.TestCase):
         data, final = self.chain.native_get(f"http://127.0.0.1:{srv.server_port}/a", 10)
         self.assertTrue(data.startswith(b"body-"))
         self.assertTrue(final.endswith("/b"))
+
+    def test_subscription_download_also_uses_the_os_tls_stack(self):
+        """The bug of 1.2.1/1.2.2: only http_get had the fallback, fetch_nodes called urlopen itself."""
+        import ssl
+        import urllib.error
+        c = self.chain
+        real = c.ur.urlopen
+
+        def boom(*a, **k):
+            raise urllib.error.URLError(ssl.SSLCertVerificationError(1, "certificate has expired"))
+        c.ur.urlopen = boom
+        self.addCleanup(setattr, c.ur, "urlopen", real)
+        seen = {}
+
+        def native(url, timeout=30, ua=None):
+            seen["ua"] = ua
+            return (SUB_B.encode(), url)
+        c.native_get = native
+        nodes = c.fetch_nodes("https://sub.test/b", "TLS")
+        self.assertEqual(len(nodes), 3)
+        self.assertEqual(seen["ua"], "v2rayN/6.45")
+
+    def test_defaults_for_new_features(self):
+        d = self.chain.DEFAULTS
+        self.assertEqual(d["strict_urls"], ["https://gemini.google.com"])
+        self.assertTrue(d["lantern_enabled"])
+        self.assertTrue(d["auto_update"])
+        self.assertTrue(d["close_to_tray"])
+
+    def test_ports_avoid_common_tools_and_legacy_values_move(self):
+        d = self.chain.DEFAULTS
+        common = {1080, 1081, 7890, 7891, 7892, 7893, 8080, 8118, 8888, 9090, 10808, 10809, 10810,
+                  19090, 19091, 19092, 18080}
+        ports = [d[k] for k in ("mixed_port", "api_port", "control_port", "gui_port", "lantern_port")]
+        self.assertEqual(len(set(ports)), 5)
+        self.assertFalse(set(ports) & common, ports)
+        self.chain.CFG_FILE.write_text(json.dumps({"mixed_port": 10808, "api_port": 19090,
+                                                   "gui_port": 31337}))
+        cfg = self.chain.load_cfg()
+        self.assertEqual(cfg["mixed_port"], d["mixed_port"])
+        self.assertEqual(cfg["api_port"], d["api_port"])
+        self.assertEqual(cfg["gui_port"], 31337)         # a deliberate custom value stays
+
+    def test_profiles_and_source_priority_tiers(self):
+        env = self.env
+        (env.proj / "profiles_first.txt").write_text(
+            "# one link per line\n" + f"vless://{UUID}@p1.test:443?security=tls&type=ws&path=%2Fp&host=p1.test#P-first\n")
+        (env.proj / "profiles_exit.txt").write_text(
+            f"vless://{UUID}@q1.test:443?security=tls&type=ws&path=%2Fp&host=q1.test#Q-exit\nnot a link\n")
+        app = self.chain.start_session(self.chain.load_cfg())
+        self.addCleanup(app.cleanup)
+        self.addCleanup(lambda: [(env.proj / f).unlink() for f in ("profiles_first.txt", "profiles_exit.txt")])
+        tiers = {t: app.tier_of(t) for t in app.names}
+        self.assertEqual(tiers["A101"], 3)                     # first-hop profile: lowest priority
+        self.assertEqual(tiers["B101"], 2)                     # exit-hop profile: second priority
+        self.assertEqual(tiers["A1"], 2)                       # subscription A: middle
+        self.assertEqual(tiers["B1"], 1)
+        chains = [t for t in app.rank if "-" in t]
+        keys = [(app.tier_of(t.split("-")[0]), app.tier_of(t.split("-")[1])) for t in chains]
+        self.assertEqual(keys, sorted(keys), "chains must be ordered by first-hop tier, then exit-hop tier")
+        self.assertIn((3, 2), keys)                            # the profile -> profile chain exists
+        self.assertEqual(app.source_label("A101-B101"), "Profile + Profile")
+        self.assertEqual(app.source_label("A1-B1"), "Subscription + Subscription")
+
+    def test_lantern_engine_is_the_first_priority(self):
+        import subprocess
+        env = self.env
+        (env.proj / "config.json").write_text(json.dumps({
+            "mixed_port": 20808, "api_port": 20090, "control_port": 20091, "top_k": 5, "tcp_timeout": 0.3,
+            "watchdog_seconds": 0, "lantern_enabled": True, "lantern_port": 28090, "lantern_timeout": 20,
+            "strict_urls": []}))
+        os.environ["CHAIN_LANTERN"] = str(env.proj / "tests" / "mock_lantern.py")
+        self.addCleanup(os.environ.pop, "CHAIN_LANTERN", None)
+        app = self.chain.start_session(self.chain.load_cfg())
+        self.addCleanup(app.cleanup)
+        self.assertEqual(app.tier_of("A0"), 1)
+        self.assertEqual(app.names["A0"], "Lantern (auto)")
+        self.assertTrue(app.rank[0].startswith("A0-"), app.rank)     # Lantern chains come first
+        self.assertEqual(app.source_label(app.rank[0]), "Lantern + Subscription")
+        proc = app.lantern.proc
+        self.assertTrue(app.lantern.alive())
+        app.cleanup()                                                # closes the engine's stdin
+        proc.wait(10)
+        self.assertIsNotNone(proc.poll())
+
+    def test_session_goes_on_without_lantern_when_it_cannot_start(self):
+        env = self.env
+        (env.proj / "config.json").write_text(json.dumps({
+            "mixed_port": 20808, "api_port": 20090, "control_port": 20091, "top_k": 5, "tcp_timeout": 0.3,
+            "watchdog_seconds": 0, "lantern_enabled": True, "lantern_port": 28091, "lantern_timeout": 4,
+            "strict_urls": []}))
+        os.environ["CHAIN_LANTERN"] = str(env.proj / "tests" / "mock_lantern.py")
+        os.environ["MOCK_LANTERN"] = "fail"
+        self.addCleanup(os.environ.pop, "CHAIN_LANTERN", None)
+        self.addCleanup(os.environ.pop, "MOCK_LANTERN", None)
+        app = self.chain.start_session(self.chain.load_cfg())
+        self.addCleanup(app.cleanup)
+        self.assertNotIn("A0", app.names)
+        self.assertTrue(app.rank)                                    # the subscriptions still work
+        self.assertIn("no free server", app.lantern.error)
+
+    def test_engine_package_must_match_the_pinned_hash(self):
+        import zipfile
+        (self.env.proj / "offline").mkdir(exist_ok=True)
+        with zipfile.ZipFile(self.env.proj / "offline" / "chainlantern-72fe1e9-windows-amd64.zip", "w") as z:
+            z.writestr("chainlantern.exe", "MZ-evil")
+        with self.assertRaises(RuntimeError) as cm:
+            self.chain.install_engine()
+        self.assertIn("sha256", str(cm.exception))
+        self.assertFalse((self.chain.ENGINE_DIR / "chainlantern.exe").exists())
+
+    def test_update_check_and_download(self):
+        import hashlib
+        c = self.chain
+        self.assertGreater(c.parse_version("v1.10.0"), c.parse_version("1.9.9"))
+        self.assertEqual(c.parse_version("garbage"), (0, 0, 0))
+        installer = b"MZ-installer-bytes"
+        digest = hashlib.sha256(installer).hexdigest()
+        release = {"tag_name": "v9.9.9", "html_url": "https://x/releases/v9.9.9", "body": "notes",
+                   "assets": [{"name": "ChainProxy-Setup-Full-9.9.9.exe", "browser_download_url": "https://x/full", "digest": "sha256:" + "0" * 64},
+                              {"name": "ChainProxy-Setup-9.9.9.exe", "browser_download_url": "https://x/light",
+                               "size": len(installer), "digest": "sha256:" + digest}]}
+        calls = []
+
+        def fake(url, timeout=30, tries=3, binary=False, ua=None):
+            calls.append(url)
+            return (json.dumps(release), url) if "api" in url or "releases" in url else (installer, url)
+        c.http_get = fake
+        cfg = c.load_cfg()
+        info = c.update_available(cfg)
+        self.assertEqual((info["version"], info["url"], info["sha256"]), ("9.9.9", "https://x/light", digest))
+        path = c.download_update(info)
+        self.assertEqual(path.read_bytes(), installer)
+        self.assertEqual(path.name, "ChainProxy-Setup-9.9.9.exe")
+        with self.assertRaises(RuntimeError):                        # wrong hash is refused
+            c.download_update({**info, "sha256": "1" * 64})
+        with self.assertRaises(RuntimeError):                        # no digest: never installed automatically
+            c.download_update({**info, "sha256": ""})
+        release["tag_name"] = "v0.0.1"
+        self.assertIsNone(c.update_available(cfg))                   # not newer
+        release["tag_name"] = "engine-72fe1e9"
+        self.assertIsNone(c.update_available(cfg))                   # non-app release ignored
 
     def test_subs_txt_is_created_from_the_template(self):
         (self.env.proj / "subs.txt").unlink()

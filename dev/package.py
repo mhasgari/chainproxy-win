@@ -15,8 +15,10 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-RELEASE = ["Run.bat", "setup.ps1", "chain.py", "gui.py", "config.json", "subs.example.txt",
-           "start.bat", "next.bat", "stop.bat", "chainproxy.ico", "README.md",
+RELEASE = ["Run.bat", "setup.ps1", "chain.py", "gui.py", "tray.py", "config.json", "subs.example.txt",
+           "start.bat", "next.bat", "stop.bat", "quit.bat", "chainproxy.ico", "README.md",
+           "assets/chainproxy-16.png", "assets/chainproxy-32.png", "assets/chainproxy-48.png",
+           "assets/chainproxy-64.png", "assets/chainproxy-128.png", "assets/chainproxy-256.png",
            "docs/QUICKSTART.md", "docs/Chain-Proxy-Quick-Start-fa.pdf", "docs/USER-GUIDE.md",
            "docs/DEVELOPER.md", "offline/README.txt", "LICENSE"]
 WIN_SCRIPTS = [".bat", ".cmd", ".ps1"]

@@ -4,6 +4,7 @@ Build dist/ChainProxy-Setup-<version>.exe (Inno Setup) in the Windows test VM.
 
     python3 dev/make_installer.py          -> dist/ChainProxy-Setup-<ver>.exe  (downloads Python/sing-box on first run)
     python3 dev/make_installer.py --full   -> dist/ChainProxy-Setup-Full-<ver>.exe (Python and sing-box inside)
+    python3 dev/make_installer.py --fake-version 9.9.9   -> dist/test-update/ (the "newer release" of `vmtest.py update`)
 
 --full takes the files from dev/vm/cache (make vm-fetch: version and signature/hash checked).
 
@@ -12,6 +13,7 @@ Needs the VM (see dev/README.md). Inno Setup 6 is downloaded into the VM when it
 removes it again). The installer itself is unsigned: SmartScreen warns on it.
 """
 import io
+import re
 import shutil
 import sys
 import tarfile
@@ -30,16 +32,25 @@ WORK = "chainproxy-installer"        # under the VM user's home
 
 def main():
     full = "--full" in sys.argv[1:]
-    ver = package.version()
+    fake = next((sys.argv[i + 1] for i, a in enumerate(sys.argv) if a == "--fake-version"), None)
+    ver = fake or package.version()
     with tempfile.TemporaryDirectory() as d:
         stage = Path(d) / "stage"
         package.stage(stage)
+        if fake:                       # a "newer release" for the updater test: only the staged copy changes
+            src = (stage / "chain.py").read_text(encoding="utf-8")
+            (stage / "chain.py").write_text(re.sub(r'__version__ = "[^"]+"', f'__version__ = "{fake}"', src, 1),
+                                            encoding="utf-8", newline="\n")
         if full:
             for pattern in (f"python-{vmtest.CONF['PY_VERSION']}-amd64.exe", "sing-box-*-windows-amd64.zip"):
                 f = vmtest.cached(pattern)
                 if not f:
                     sys.exit(f"{pattern} is not in dev/vm/cache: run `make vm-fetch` first")
                 shutil.copy(f, stage / "offline" / f.name)
+            engine = sorted((ROOT / "dist" / "engine").glob("chainlantern-*-windows-amd64.zip"))
+            if not engine:
+                sys.exit("no Lantern engine in dist/engine/: run `python3 dev/build_lantern.py` first")
+            shutil.copy(engine[-1], stage / "offline" / engine[-1].name)
             shutil.copy(ROOT / "installer" / "THIRD-PARTY-NOTICES.txt", stage / "THIRD-PARTY-NOTICES.txt")
         buf = io.BytesIO()
         with tarfile.open(fileobj=buf, mode="w:gz") as tar:
@@ -72,8 +83,8 @@ Get-ChildItem "$w\\output" | ForEach-Object {{ $_.Name + " " + $_.Length }}
     if rc != 0:
         sys.exit("installer build failed")
     name = f"ChainProxy-Setup-Full-{ver}.exe" if full else f"ChainProxy-Setup-{ver}.exe"
-    dest = ROOT / "dist" / name
-    dest.parent.mkdir(exist_ok=True)
+    dest = ROOT / "dist" / ("test-update" if fake else "") / name
+    dest.parent.mkdir(parents=True, exist_ok=True)
     if not vmtest.scp_from(f"{WORK}/output/{name}", dest):
         sys.exit("could not copy the installer back from the VM")
     print(f"built {dest.relative_to(ROOT)} ({dest.stat().st_size // 1024} KiB)")

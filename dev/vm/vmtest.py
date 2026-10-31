@@ -669,6 +669,9 @@ def build_tar(online):
                 if f:
                     tar.add(f, arcname=f"repo/offline/{f.name}")
                     staged.append(f.name)
+        for z in sorted((ROOT / "dist" / "engine").glob("chainlantern-*-windows-amd64.zip"))[-1:]:
+            tar.add(z, arcname=f"repo/offline/{z.name}")          # the Lantern engine (python -m dev/build_lantern.py)
+            staged.append(z.name)
     return buf.getvalue(), staged
 
 
@@ -714,6 +717,14 @@ Write-Host "deployed to $Repo"
 def stage_install(a):
     rc, out = ps(guest_prelude() + '& "$Repo\\dev\\vm\\guest\\install.ps1" -Repo $Repo; exit $LASTEXITCODE',
                  stream=True, log=artifacts() / "install.log", timeout=3600)
+    return rc == 0
+
+
+def stage_lantern(a):
+    """Real Lantern end to end (needs the internet from the VM): engine -> chain with the GeminiRoute exit list."""
+    require_python()
+    rc, out = ps(guest_prelude() + '& "$Repo\\dev\\vm\\guest\\lantern.ps1" -Repo $Repo; exit $LASTEXITCODE',
+                 stream=True, log=artifacts() / "lantern.log", timeout=900)
     return rc == 0
 
 
@@ -810,6 +821,28 @@ Write-Host "SMOKE_EXIT=$code"
     print(out)
     check("SMOKE_EXIT=0" in out and "GUI SMOKE: PASS" in out, "gui_smoke.py passed on the Windows desktop")
 
+    # 1b. the real notification-area icon (ctypes) on the desktop, with a screenshot of its menu
+    say("== tray icon on the desktop ==")
+    rc, out = ps(guest_prelude() + r'''
+$log = "$Repo\runtime\tray-check.log"; New-Item -ItemType Directory -Force "$Repo\runtime" | Out-Null
+Remove-Item $log -ErrorAction SilentlyContinue
+Start-Interactive 'chainproxy-tray' $py "-X utf8 `"$Repo\dev\vm\guest\tray_check.py`" `"$Repo`"" $Repo
+''', timeout=60)
+    time.sleep(5.5)
+    screenshot("gui-0-tray-menu")
+    time.sleep(7)
+    rc, out = ps(guest_prelude() + r'''
+Wait-Interactive 'chainproxy-tray' 30 | Out-Null
+Stop-Interactive 'chainproxy-tray'
+Get-Content "$Repo\runtime\tray-check.log"
+''', timeout=90)
+    print(out.strip())
+    check("TRAY_OK True" in out, "tray icon registered (Shell_NotifyIcon)")
+    check("DBLCLICK_SHOW True" in out, "double-click on the icon asks the window to show")
+    check("ENDSESSION_HOOK True" in out, "logoff/shutdown message restores the proxy (hook called)")
+    check("MENU_OPEN" in out and "STILL_RESPONDING True" in out and "STOPPED True" in out,
+          "right-click menu opens, closes with Esc, and the icon keeps answering")
+
     # 2. the real window against the lab with the real core
     say("== real window, real sing-box, lab subscriptions ==")
     lab = start_lab()
@@ -871,7 +904,7 @@ Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'pythonw.exe' -and $_
         lab.stop()
 
 
-STAGES = {"install": stage_install, "unit": stage_unit, "e2e": stage_e2e, "gui": stage_gui}
+STAGES = {"install": stage_install, "unit": stage_unit, "e2e": stage_e2e, "gui": stage_gui, "lantern": stage_lantern}
 
 
 def run_stage(name, a):
@@ -950,7 +983,9 @@ def cmd_ps(a):
 
 def run_guest_script(name, **params):
     """Run dev/vm/guest/<name>.ps1 in the VM without deploying anything (its text is sent over ssh)."""
-    text = (ROOT / "dev" / "vm" / "guest" / name).read_text(encoding="ascii")
+    guest = ROOT / "dev" / "vm" / "guest"
+    text = (guest / name).read_text(encoding="ascii")
+    text = text.replace('. "$PSScriptRoot\\common.ps1"', (guest / "common.ps1").read_text(encoding="ascii"))   # nothing is deployed
     args = " ".join(f"-{k} ${str(v).lower()}" if isinstance(v, bool) else f"-{k} '{v}'" for k, v in params.items())
     return ps("& {\n" + text + "\n} " + args, stream=True, log=artifacts() / (name.replace(".ps1", "") + ".log"),
               timeout=1800)
@@ -984,7 +1019,59 @@ def cmd_installer(a):
             die("python installer is not in dev/vm/cache: run `make vm-fetch`")
         scp_to(py, "python-pre.exe")
     rc, out = run_guest_script("installer-test.ps1", Setup=name, Full=full, PrePython=a.python)
-    return summarize([{"stage": "installer" + ("-full" if full else "") + (f"+py-{a.python}" if a.python else ""), "result": "PASS" if rc == 0 else "FAIL",
+    return summarize([{"stage": "installer" + ("-full" if full else "") + (f"+py-{a.python}" if a.python else ""), "result": "PASS" if rc == 0 and "INSTALLER RESULT: PASS" in out else "FAIL",
+                       "seconds": 0}])
+
+
+def cmd_update(a):
+    """Self-update: install the current installer in the VM, let the app find a 'newer release' on a host
+    HTTP server (fake GitHub API), and check that it updates itself, restarts and keeps the user data."""
+    import hashlib
+    import http.server
+    import threading
+    need("VM_NAME", "WIN_USER")
+    cur = next(iter(sorted((ROOT / "dist").glob("ChainProxy-Setup-[0-9]*.exe"))[-1:]), None)
+    if not cur:
+        die("no installer in dist/: run `make installer` first")
+    newv = "9.9.9"
+    new = ROOT / "dist" / "test-update" / f"ChainProxy-Setup-{newv}.exe"
+    if not new.exists() or a.rebuild:
+        subprocess.run([sys.executable, str(ROOT / "dev" / "make_installer.py"), "--fake-version", newv], check=True)
+    vm_start()
+    if not wait_ssh(300):
+        die("VM not reachable over ssh (vmtest.py doctor)")
+    digest = hashlib.sha256(new.read_bytes()).hexdigest()
+    hip = host_ip()
+
+    class H(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *x):
+            pass
+
+        def do_GET(self):
+            base = f"http://{hip}:{self.server.server_port}"
+            if self.path == "/latest":
+                body = json.dumps({"tag_name": f"v{newv}", "html_url": base, "body": "test release", "assets": [
+                    {"name": new.name, "browser_download_url": f"{base}/{new.name}", "size": new.stat().st_size,
+                     "digest": "sha256:" + digest}]}).encode()
+            elif self.path == "/" + new.name:
+                body = new.read_bytes()
+            else:
+                self.send_error(404)
+                return
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+    srv = http.server.ThreadingHTTPServer((hip, 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        scp_to(cur, cur.name)
+        rc, out = run_guest_script("update-test.ps1", OldInstaller=cur.name, Api=f"http://{hip}:{srv.server_port}/latest",
+                                   NewVersion=newv)
+        screenshot("update-end")
+    finally:
+        srv.shutdown()
+    return summarize([{"stage": "update", "result": "PASS" if rc == 0 and "UPDATE RESULT: PASS" in out else "FAIL",
                        "seconds": 0}])
 
 
@@ -1126,6 +1213,8 @@ def main():
     al.add_argument("--skip-gui", action="store_true")
     cl = sub.add_parser("clean")
     cl.add_argument("--keep-tools", action="store_true", help="keep Python and Inno Setup (faster next run)")
+    up = sub.add_parser("update")
+    up.add_argument("--rebuild", action="store_true", help="rebuild the fake newer installer")
     ins = sub.add_parser("installer")
     ins.add_argument("--full", action="store_true", help="test the Full installer (Python + sing-box inside)")
     ins.add_argument("--python", choices=["full", "notk"], default="",
@@ -1140,7 +1229,7 @@ def main():
     handlers = {"doctor": cmd_doctor, "fetch": cmd_fetch, "bootstrap": cmd_bootstrap,
                 "snapshot": cmd_snapshot, "revert": cmd_revert, "deploy": cmd_deploy,
                 "all": cmd_all, "shell": cmd_shell, "ps": cmd_ps, "screenshot": cmd_screenshot,
-                "pull-logs": cmd_pull_logs, "clean": cmd_clean, "installer": cmd_installer}
+                "pull-logs": cmd_pull_logs, "clean": cmd_clean, "installer": cmd_installer, "update": cmd_update}
     handlers.update({n: cmd_stage for n in STAGES})
     return handlers[a.cmd](a) or 0
 

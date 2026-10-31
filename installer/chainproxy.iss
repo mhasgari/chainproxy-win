@@ -47,34 +47,51 @@ Source: "{#StageDir}\config.json"; DestDir: "{app}"; Flags: onlyifdoesntexist un
 Source: "{#StageDir}\*"; DestDir: "{app}"; Excludes: "subs.txt,config.json"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\Chain Proxy"; Filename: "{app}\Run.bat"; WorkingDir: "{app}"; IconFilename: "{app}\chainproxy.ico"
-Name: "{autodesktop}\Chain Proxy"; Filename: "{app}\Run.bat"; WorkingDir: "{app}"; IconFilename: "{app}\chainproxy.ico"; Tasks: desktopicon
+; AppUserModelID = the id gui.py sets: notifications and the taskbar then say "Chain Proxy", not "Python"
+Name: "{autoprograms}\Chain Proxy"; Filename: "{app}\Run.bat"; WorkingDir: "{app}"; IconFilename: "{app}\chainproxy.ico"; AppUserModelID: "mhasgari.ChainProxy"
+Name: "{autodesktop}\Chain Proxy"; Filename: "{app}\Run.bat"; WorkingDir: "{app}"; IconFilename: "{app}\chainproxy.ico"; Tasks: desktopicon; AppUserModelID: "mhasgari.ChainProxy"
 Name: "{autoprograms}\Chain Proxy Quick Start (PDF)"; Filename: "{app}\docs\Chain-Proxy-Quick-Start-fa.pdf"
 
 [Run]
+; started by the in-app updater (/LAUNCH=1): bring the new version up again after a silent upgrade
+Filename: "{cmd}"; Parameters: "/c ""{app}\Run.bat"""; WorkingDir: "{app}"; Flags: nowait runhidden; Check: LaunchRequested
 Filename: "{app}\Run.bat"; Description: "Start Chain Proxy now (the first start sets up Python and sing-box)"; WorkingDir: "{app}"; Flags: postinstall nowait skipifsilent shellexec
 
 [UninstallRun]
-; give the Windows proxy settings back before the files go away
-Filename: "{cmd}"; Parameters: "/c ""{app}\stop.bat"""; WorkingDir: "{app}"; Flags: runhidden; RunOnceId: "RestoreProxy"
+; close the window in the tray and give the Windows proxy settings back before the files go away
+Filename: "{cmd}"; Parameters: "/c ""{app}\quit.bat"""; WorkingDir: "{app}"; Flags: runhidden; RunOnceId: "RestoreProxy"
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\runtime"
 Type: filesandordirs; Name: "{app}\cache"
 Type: filesandordirs; Name: "{app}\core"
+Type: filesandordirs; Name: "{app}\engine"
 Type: filesandordirs; Name: "{app}\__pycache__"
 Type: files; Name: "{app}\.proxy_state.json"
 Type: files; Name: "{app}\.shortcuts_done"
+Type: files; Name: "{app}\.resume_enabled"
+Type: files; Name: "{app}\.quit_request"
+Type: files; Name: "{app}\profiles_first.txt"
+Type: files; Name: "{app}\profiles_exit.txt"
 Type: files; Name: "{app}\subs.txt"
 Type: files; Name: "{app}\config.json"
 
 [Code]
-// an upgrade must not overwrite files that a running instance uses: switch it off first
+function LaunchRequested: Boolean;
+begin
+  Result := ExpandConstant('{param:LAUNCH|0}') = '1';
+end;
+
+// an upgrade must not overwrite files that a running instance uses: switch the session off and close
+// the window that lives in the notification area (quit.bat does both and waits for it)
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   Rc: Integer;
 begin
-  if FileExists(ExpandConstant('{app}\stop.bat')) then
+  if FileExists(ExpandConstant('{app}\quit.bat')) then
+    Exec(ExpandConstant('{cmd}'), ExpandConstant('/c ""{app}\quit.bat""'), ExpandConstant('{app}'),
+         SW_HIDE, ewWaitUntilTerminated, Rc)
+  else if FileExists(ExpandConstant('{app}\stop.bat')) then
     Exec(ExpandConstant('{cmd}'), ExpandConstant('/c ""{app}\stop.bat""'), ExpandConstant('{app}'),
          SW_HIDE, ewWaitUntilTerminated, Rc);
   Result := '';

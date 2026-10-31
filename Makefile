@@ -6,7 +6,7 @@ XVFB    := $(shell command -v xvfb-run 2>/dev/null)
 .DEFAULT_GOAL := help
 .PHONY: help test test-gui test-dev lint check e2e-local package pdf installer clean \
         vm-doctor vm-fetch vm-bootstrap vm-snapshot vm-revert vm-deploy vm-install \
-        vm-unit vm-e2e vm-gui vm-clean vm-clean-light vm-installer vm-installer-full vm-all vm-all-clean vm-shell vm-screenshot vm-logs
+        vm-unit vm-e2e vm-gui vm-lantern vm-update lantern vm-clean vm-clean-light vm-installer vm-installer-full vm-all vm-all-clean vm-shell vm-screenshot vm-logs
 
 help:                ## show this help
 	@grep -hE '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | sed -E 's/:.*## /\t/' | expand -t 18
@@ -69,6 +69,15 @@ vm-e2e:              ## real chain against the host lab + registry checks
 	$(VMTEST) e2e
 vm-gui:              ## GUI on the VM desktop + screenshots
 	$(VMTEST) gui
+vm-lantern:          ## real Lantern engine -> chain with the GeminiRoute exit list (needs the internet)
+	$(VMTEST) lantern
+
+vm-update:           ## self-update test: installer -> fake newer release on a host server -> app updates itself
+	$(VMTEST) update
+
+lantern:             ## build the Lantern engine zip (dist/engine/) from the pinned radiance commit
+	$(PY) dev/build_lantern.py
+
 vm-clean:            ## remove EVERYTHING the project put into the VM (Python, Inno Setup too)
 	$(VMTEST) clean
 

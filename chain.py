@@ -10,15 +10,17 @@ Usage:
     python chain.py status|list     show current route / ranked routes
     python chain.py rescan          re-measure all routes
     python chain.py off             stop + restore Windows proxy settings
+    python chain.py quit            off + close the window living in the tray (installer, updater)
     python chain.py serve           start without the interactive console (stop with 'off')
     python chain.py ensure          make sure a working sing-box is installed
     python chain.py install-core    (re)download sing-box.exe into ./core
 """
-__version__ = "1.2.2"
+__version__ = "1.3.0"
 
 import atexit
 import base64
 import hashlib
+import io
 import json
 import os
 import platform
@@ -56,15 +58,15 @@ if hasattr(sys.stdout, "reconfigure"):
 _private = ";".join(["localhost", "127.*", "10.*", "192.168.*"] +
                     [f"172.{i}.*" for i in range(16, 32)] + ["<local>"])
 DEFAULTS = {
-    "mixed_port": 10808,
-    "api_port": 19090,
-    "control_port": 19091,
+    "mixed_port": 42815,
+    "api_port": 42816,
+    "control_port": 42817,
     "top_k": 5,                      # how many nodes from each list to try
     "tcp_timeout": 3.0,
     "delay_timeout_ms": 7000,
     "check_urls": ["https://www.gstatic.com/generate_204",
                    "https://cp.cloudflare.com/generate_204"],
-    "strict_urls": [],               # sites that must answer < 400 through the route
+    "strict_urls": ["https://gemini.google.com"],   # sites that must answer < 400 through the route
     "blocked_countries": ["IR"],     # reject routes whose exit IP is in these countries
     "direct_suffixes": [".ir"],      # domains that bypass the proxy
     "bypass": _private,
@@ -76,6 +78,17 @@ DEFAULTS = {
     "verify_timeout": 12,            # seconds per request of the route verification
     "rank_by_speed": False,          # False: chains, then B-only, then A-only; True: pure speed order
     "private_direct": True,          # private/LAN destinations bypass the route
+    "lantern_enabled": True,         # first hop, priority 1: Lantern (free plan, best server) via the chainlantern engine
+    "lantern_port": 42819,           # loopback SOCKS port of the engine
+    "lantern_timeout": 90,           # seconds to wait for Lantern before going on without it
+    "top_k_profiles": 3,             # nodes taken from the v2ray profile lists (profiles_first.txt / profiles_exit.txt)
+    "auto_update": True,             # install new releases by itself (installer builds only)
+    "update_check_hours": 6,
+    "update_repo": "mhasgari/chainproxy-win",
+    "update_api": "",                # override of the releases/latest URL (tests)
+    "update_first_check_seconds": 45,   # first update check after the window starts
+    "close_to_tray": True,           # closing the window keeps the app in the notification area
+    "gui_port": 42818,               # loopback port that makes the window a single instance
 }
 
 
@@ -100,6 +113,12 @@ def log(*a):
         LOG_HOOK(line)
 
 
+# Ports the first releases used. Other tools (v2rayN: 10808/10809, Clash: 7890/9090, ...) like
+# the same numbers, so a config that still holds one of them moves to the new default.
+LEGACY_PORTS = {"mixed_port": 10808, "api_port": 19090, "control_port": 19091,
+                "gui_port": 19092, "lantern_port": 18080}
+
+
 def load_cfg():
     cfg = dict(DEFAULTS)
     if CFG_FILE.exists():
@@ -107,6 +126,9 @@ def load_cfg():
             cfg.update(json.loads(CFG_FILE.read_text(encoding="utf-8-sig")))
         except ValueError as e:
             sys.exit(f"config.json is not valid JSON ({e}); fix it or delete the file")
+    for key, old in LEGACY_PORTS.items():
+        if cfg[key] == old:
+            cfg[key] = DEFAULTS[key]
     for key in ("strict_urls", "check_urls", "geo_fallback_urls"):
         cfg[key] = [n for n in (normalize_url(x) for x in cfg[key]) if n]
     if cfg.get("geo_url"):
@@ -269,9 +291,7 @@ def fetch_nodes(src, label):
     cache = CACHE_DIR / f"{label}.txt"
     if re.match(r"^https?://", src, re.I):
         try:
-            req = ur.Request(src, headers={"User-Agent": "v2rayN/6.45"})
-            with ur.urlopen(req, timeout=25) as r:
-                body = r.read().decode("utf-8", "replace")
+            body, _ = http_get(src, timeout=25, tries=2, ua="v2rayN/6.45")     # TLS fallback included
             cache.write_text(body, encoding="utf-8")
             log(f"[{label}] subscription downloaded")
         except Exception as e:
@@ -300,16 +320,41 @@ def fetch_nodes(src, label):
     return nodes
 
 
-def load_sources():
+FIRST_PROFILES = BASE / "profiles_first.txt"      # v2ray links for the first hop (lowest priority)
+EXIT_PROFILES = BASE / "profiles_exit.txt"        # v2ray links for the exit hop (second priority)
+
+
+def read_lines(path):
+    try:
+        lines = [l.strip() for l in Path(path).read_text(encoding="utf-8-sig").splitlines()]
+    except OSError:
+        return []
+    return [l for l in lines if l and not l.startswith("#")]
+
+
+def subscription_sources():
+    """(first-hop subscription, exit-hop subscription) from subs.txt; the template's placeholder is 'unset'."""
     ensure_subs_file()
-    if not SUBS_FILE.exists():
-        sys.exit("subs.txt not found")
-    lines = [l.strip() for l in SUBS_FILE.read_text(encoding="utf-8-sig").splitlines()]
-    lines = [l for l in lines if l and not l.startswith("#")]
-    if not lines or subs_are_placeholder(lines):
-        sys.exit("subs.txt has no real subscription links yet: put the first link on "
-                 "line 1 and the second on line 2 (or use Settings in the window)")
-    return lines
+    lines = read_lines(SUBS_FILE)
+    return tuple(lines[i] if i < len(lines) and "example.com/sub/" not in lines[i] else None for i in (0, 1))
+
+
+def load_profiles(path, label):
+    """Standard v2ray links (vless:// vmess:// trojan:// ss:// hysteria2://), one per line."""
+    nodes, seen = [], set()
+    for line in read_lines(path):
+        n = parse_node(line)
+        if n and node_key(n[1]) not in seen:
+            seen.add(node_key(n[1]))
+            nodes.append(n)
+    if nodes:
+        log(f"[{label}] {len(nodes)} profile(s)")
+    return nodes
+
+
+def sources_configured(cfg):
+    a, b = subscription_sources()
+    return bool(cfg["lantern_enabled"] or a or b or read_lines(FIRST_PROFILES) or read_lines(EXIT_PROFILES))
 
 
 def ensure_subs_file():
@@ -344,7 +389,7 @@ def tcp_ms(ob, timeout):
         return None
 
 
-def pick(nodes, k, timeout, prefix, validator=None):
+def pick(nodes, k, timeout, prefix, validator=None, start=1):
     with ThreadPoolExecutor(64) as ex:
         ms = list(ex.map(lambda n: tcp_ms(n[1], timeout), nodes))
     scored = sorted([(m, n) for m, n in zip(ms, nodes) if m is not None],
@@ -361,7 +406,7 @@ def pick(nodes, k, timeout, prefix, validator=None):
             chosen = good[:k]
         else:
             log(f"[{prefix}] core check rejected every candidate; using them unvalidated")
-    return {f"{prefix}{i + 1}": n for i, n in enumerate(chosen)}
+    return {f"{prefix}{start + i}": n for i, n in enumerate(chosen)}
 
 
 # --------------------------------------------------------------------------
@@ -452,7 +497,7 @@ def _is_tls_error(e):
     return isinstance(getattr(e, "reason", e), ssl.SSLError) or "CERTIFICATE_VERIFY_FAILED" in str(e)
 
 
-def native_get(url, timeout=30):
+def native_get(url, timeout=30, ua=None):
     """Download with the operating system's TLS stack instead of Python's: curl.exe on Windows 10+
     (schannel + the Windows certificate store, which also fetches missing roots/intermediates, like a
     browser or v2rayN does), else PowerShell's Invoke-WebRequest. Returns (bytes, final url)."""
@@ -461,7 +506,7 @@ def native_get(url, timeout=30):
     try:
         curl = shutil.which("curl.exe" if IS_WIN else "curl")
         if curl:
-            cmd = [curl, "-sS", "-L", "--fail", "--max-time", str(int(timeout)), "-A", UA,
+            cmd = [curl, "-sS", "-L", "--fail", "--max-time", str(int(timeout)), "-A", ua or UA,
                    "-o", str(out), "-w", "%{url_effective}", url]
             env = None
         elif IS_WIN:
@@ -470,7 +515,7 @@ def native_get(url, timeout=30):
                   "[IO.File]::WriteAllBytes($env:CHAIN_OUT, $r.RawContentStream.ToArray()); "
                   "$r.BaseResponse.ResponseUri.AbsoluteUri")
             cmd = ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps]
-            env = dict(os.environ, CHAIN_URL=url, CHAIN_UA=UA, CHAIN_OUT=str(out))
+            env = dict(os.environ, CHAIN_URL=url, CHAIN_UA=ua or UA, CHAIN_OUT=str(out))
         else:
             raise RuntimeError("no curl")
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 15, env=env, creationflags=flags)
@@ -481,11 +526,11 @@ def native_get(url, timeout=30):
         shutil.rmtree(out.parent, ignore_errors=True)
 
 
-def http_get(url, timeout=30, tries=3, binary=False):
+def http_get(url, timeout=30, tries=3, binary=False, ua=None):
     last = None
     for i in range(tries):
         try:
-            with ur.urlopen(ur.Request(url, headers={"User-Agent": UA}), timeout=timeout) as r:
+            with ur.urlopen(ur.Request(url, headers={"User-Agent": ua or UA}), timeout=timeout) as r:
                 data, final = r.read(), r.geturl()
         except Exception as e:
             last = e
@@ -494,7 +539,7 @@ def http_get(url, timeout=30, tries=3, binary=False):
                 # the OS stack usually still trusts the site, as it does for the browser
                 log("TLS check failed in Python; retrying with the Windows TLS stack:", url.split("?")[0])
                 try:
-                    data, final = native_get(url, timeout)
+                    data, final = native_get(url, timeout, ua)
                 except Exception as e2:
                     raise RuntimeError(f"download failed: {url} ({last}; Windows TLS stack: {e2}) - "
                                        "check the date/time of this computer and run Windows Update") from None
@@ -686,6 +731,217 @@ def start_guard():
     except Exception as e:
         log("could not start the crash guard:", e)
         return None
+
+
+# --------------------------------------------------------------------------
+# Lantern engine (first hop, priority 1)
+# --------------------------------------------------------------------------
+# `chainlantern` = Lantern's client backend (github.com/getlantern/radiance, GPL-3.0) built headless with a
+# local SOCKS5 inbound (dev/build_lantern.py). It is a separate program: it connects to the best free-plan
+# server by itself, and Chain Proxy uses its SOCKS port as the first hop of the chains.
+LANTERN_ENGINE = {
+    "commit": "72fe1e9",
+    "url": "https://github.com/mhasgari/chainproxy-win/releases/download/engine-72fe1e9/"
+           "chainlantern-72fe1e9-windows-amd64.zip",
+    "sha256": "f8b2e62f9b988b5c95f2757e1e809d5700da2ba8fc704135b4c91afcf1caca86",
+}
+ENGINE_DIR = BASE / "engine"
+LANTERN_NAME = "Lantern (auto)"
+
+
+def engine_exe():
+    env = os.environ.get("CHAIN_LANTERN")            # tests / development: an engine binary or a .py mock
+    if env:
+        return env
+    exe = ENGINE_DIR / ("chainlantern.exe" if IS_WIN else "chainlantern")
+    return str(exe) if exe.exists() else None
+
+
+def install_engine():
+    """Unpack the engine: the bundled/offline zip first, else download it. The sha256 must match."""
+    import hashlib
+    z = None
+    offline = sorted((BASE / "offline").glob("chainlantern-*-windows-amd64.zip")) if (BASE / "offline").exists() else []
+    if offline:
+        z = offline[-1].read_bytes()
+        log("using offline Lantern engine", offline[-1].name)
+    else:
+        log("downloading the Lantern engine (once, ~24 MB) ...")
+        z, _ = http_get(LANTERN_ENGINE["url"], timeout=180, binary=True)
+    if hashlib.sha256(z).hexdigest() != LANTERN_ENGINE["sha256"]:
+        raise RuntimeError("the Lantern engine package does not match its pinned sha256 - refusing to use it")
+    ENGINE_DIR.mkdir(exist_ok=True)
+    with zipfile.ZipFile(io.BytesIO(z)) as zf:
+        for name in zf.namelist():
+            if name in ("chainlantern.exe", "LICENSE", "SOURCE.txt"):
+                tmp = ENGINE_DIR / (name + ".new")
+                tmp.write_bytes(zf.read(name))
+                os.replace(tmp, ENGINE_DIR / name)
+    return str(ENGINE_DIR / "chainlantern.exe")
+
+
+class Lantern:
+    """The headless Lantern engine process and what it reports on stdout (CHAINLANTERN lines)."""
+
+    def __init__(self, cfg):
+        self.port = cfg["lantern_port"]
+        self.cfg = cfg
+        self.proc = None
+        self.ready = False
+        self.status = "stopped"
+        self.error = ""
+        self._thread = None
+        self._starter = None
+        self.starts = []
+
+    def node(self):
+        return (LANTERN_NAME, {"type": "socks", "server": "127.0.0.1", "server_port": self.port, "version": "5"})
+
+    def alive(self):
+        return self.proc is not None and self.proc.poll() is None
+
+    def begin(self):
+        """Start in the background (the engine may have to be downloaded first)."""
+        self._starter = threading.Thread(target=self._start_safe, daemon=True)
+        self._starter.start()
+
+    def _start_safe(self):
+        try:
+            self.start()
+        except Exception as e:
+            self.error = str(e)
+            self.status = "unavailable"
+            log("Lantern unavailable:", e)
+
+    def start(self):
+        exe = engine_exe()
+        if not exe:
+            if not IS_WIN:
+                raise RuntimeError("the Lantern engine is only built for Windows (set CHAIN_LANTERN to test)")
+            exe = install_engine()
+        if not port_free(self.port):
+            raise RuntimeError(f"port {self.port} (lantern_port) is already in use")
+        data = RUNTIME_DIR / "lantern"
+        data.mkdir(parents=True, exist_ok=True)
+        cmd = ([sys.executable, exe] if exe.endswith(".py") else [exe]) + [
+            "--data-path", str(data), "--listen", f"127.0.0.1:{self.port}", "--log-level", "warn"]
+        self.ready, self.error, self.status = False, "", "starting"
+        self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                     text=True, encoding="utf-8", errors="replace", bufsize=1,
+                                     creationflags=0x08000000 if IS_WIN else 0)
+        job_attach(self.proc)
+        self.starts = [t for t in self.starts if time.time() - t < 300] + [time.time()]
+        self._thread = threading.Thread(target=self._read, args=(self.proc,), daemon=True)
+        self._thread.start()
+
+    def _read(self, proc):
+        for line in proc.stdout:
+            if not line.startswith("CHAINLANTERN "):
+                continue
+            kind, _, rest = line[13:].strip().partition(" ")
+            if kind == "READY":
+                self.ready, self.status = True, "connected"
+            elif kind == "STATUS":
+                self.status = rest
+                if rest != "connected":
+                    self.ready = False
+            elif kind == "ERROR":
+                self.error = rest
+        self.ready = False
+        if self.status not in ("unavailable",):
+            self.status = "stopped"
+
+    def wait_ready(self, timeout):
+        """True once connected and the SOCKS port answers; False on failure/timeout (error is set)."""
+        if self._starter:
+            self._starter.join(timeout)
+        t0 = time.time()
+        while time.time() - t0 < timeout:
+            if self.ready and not port_free(self.port):
+                return True
+            if self.status == "unavailable" or (self.proc is not None and self.proc.poll() is not None):
+                break
+            time.sleep(0.4)
+        if not self.error:
+            self.error = "did not connect in time" if self.alive() else "the engine exited"
+        return False
+
+    def restart(self):
+        self.stop()
+        self.start()
+
+    def stop(self):
+        p, self.proc = self.proc, None
+        self.ready = False
+        if p is None:
+            return
+        try:
+            p.stdin.close()                      # the engine exits when its stdin closes
+            p.wait(8)
+        except Exception:
+            pass
+        if p.poll() is None:
+            p.kill()
+            try:
+                p.wait(3)
+            except Exception:
+                pass
+        self.status = "stopped"
+
+
+# --------------------------------------------------------------------------
+# self-update (GitHub releases)
+# --------------------------------------------------------------------------
+def parse_version(v):
+    m = re.match(r"^v?(\d+)\.(\d+)\.(\d+)", str(v).strip())
+    return tuple(int(x) for x in m.groups()) if m else (0, 0, 0)
+
+
+def installed_by_installer():
+    """Only an installer-based copy can update itself silently (portable/dev copies just get a notice)."""
+    return IS_WIN and (BASE / "unins000.exe").exists()
+
+
+def latest_release(cfg):
+    """The newest published release as {version, url, sha256, size, page, notes}, or None."""
+    api = cfg["update_api"] or f"https://api.github.com/repos/{cfg['update_repo']}/releases/latest"
+    data = json.loads(http_get(api, timeout=20, tries=2, ua="chainproxy-updater")[0])
+    tag = str(data.get("tag_name", ""))
+    if not re.match(r"^v\d+\.\d+\.\d+$", tag):
+        return None                               # engine-* and other non-app releases are ignored
+    asset = next((a for a in data.get("assets", []) if re.fullmatch(r"ChainProxy-Setup-\d+\.\d+\.\d+\.exe", a.get("name", ""))), None)
+    info = {"version": tag[1:], "page": data.get("html_url", ""), "notes": str(data.get("body", ""))[:1500],
+            "url": asset and asset.get("browser_download_url"), "size": asset and asset.get("size"),
+            "sha256": ((asset or {}).get("digest") or "").removeprefix("sha256:")}
+    return info
+
+
+def update_available(cfg):
+    info = latest_release(cfg)
+    return info if info and parse_version(info["version"]) > parse_version(__version__) else None
+
+
+def download_update(info):
+    """Download the installer and verify its sha256 (from the release metadata). Returns the file path."""
+    import hashlib
+    if not (info.get("url") and re.fullmatch(r"[0-9a-f]{64}", info.get("sha256") or "")):
+        raise RuntimeError("the release has no installer with a sha256 digest: not installing it automatically")
+    data, _ = http_get(info["url"], timeout=300, binary=True)
+    if hashlib.sha256(data).hexdigest() != info["sha256"]:
+        raise RuntimeError("the downloaded installer does not match the published sha256")
+    dest = Path(tempfile.mkdtemp(prefix="chainproxy-update-")) / f"ChainProxy-Setup-{info['version']}.exe"
+    dest.write_bytes(data)
+    return dest
+
+
+def apply_update(installer, resume=False):
+    """Run the installer silently (it stops the app's session first) and restart the app afterwards.
+    The caller must exit right after this returns: the installer replaces the app's files."""
+    if resume:
+        (BASE / ".resume_enabled").write_text("1")
+    subprocess.Popen([str(installer), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/LAUNCH=1"],
+                     creationflags=0x00000008 | 0x00000200 | 0x08000000, close_fds=True,   # detached, own group
+                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 class Core:
@@ -903,6 +1159,19 @@ class App:
         self.last_info = ""     # exit-IP info of the active route
         self.srv = None
         self.guard = None
+        self.tier = {}          # tag -> priority tier (1 = best): A: 1 Lantern, 2 subscription, 3 profiles;
+        self.lantern = None     #                                  B: 1 subscription, 2 profiles
+
+    SRC_A = {1: "Lantern", 2: "Subscription", 3: "Profile"}
+    SRC_B = {1: "Subscription", 2: "Profile"}
+
+    def tier_of(self, tag):
+        return self.tier.get(tag, 1)
+
+    def source_label(self, tag):
+        """'Lantern + Subscription' for a chain, the single source for a one-hop route."""
+        names = [(self.SRC_A if t.startswith("A") else self.SRC_B).get(self.tier_of(t), "?") for t in tag.split("-")]
+        return " + ".join(names)
 
     def label(self, tag):
         parts = tag.split("-")
@@ -917,7 +1186,7 @@ class App:
                     return tag, None
                 ds.append(d)
             return tag, sum(ds) / len(ds)
-        with ThreadPoolExecutor(8) as ex:
+        with ThreadPoolExecutor(12) as ex:
             return dict(ex.map(one, tags))
 
     def build_rank(self, A, B):
@@ -925,11 +1194,14 @@ class App:
         res = self.measure_all(chains + list(B) + list(A))
         self.delays = res
 
+        def key(t):      # priority tiers first (first hop, then exit hop), then speed
+            return tuple(self.tier_of(p) for p in t.split("-")) + (res[t],)
+
         def ordered(tags):
-            return sorted([t for t in tags if res.get(t) is not None], key=lambda t: res[t])
-        # preference: chains (A->B), then B alone, then A alone
+            return sorted([t for t in tags if res.get(t) is not None], key=key)
+        # preference: chains (A->B), then B alone, then A alone; inside a group by source priority, then speed
         if self.cfg["rank_by_speed"]:
-            self.rank = ordered(chains + list(B) + list(A))
+            self.rank = sorted([t for t in chains + list(B) + list(A) if res.get(t) is not None], key=lambda t: res[t])
         else:
             self.rank = ordered(chains) + ordered(list(B)) + ordered(list(A))
         self.idx = -1
@@ -1005,7 +1277,7 @@ class App:
         out = []
         for i, t in enumerate(self.rank):
             out.append(f"{'*' if i == self.idx else ' '} {i + 1:2d}. {self.delays[t]:5.0f}ms  "
-                       f"{self.label(t)}")
+                       f"{self.label(t)}  [{self.source_label(t)}]")
         return "\n".join(out) or "empty"
 
     def rescan(self):
@@ -1034,6 +1306,8 @@ class App:
         if self.guard:
             self.guard.kill()
         self.core.stop()
+        if self.lantern:
+            self.lantern.stop()
 
     # ---- control socket
     def handle(self, cmd):
@@ -1072,6 +1346,17 @@ class App:
         secs, limit = max(self.cfg["watchdog_seconds"], 5), self.cfg["watchdog_failures"]
         fails, last_check, crashes = 0, time.time(), []
         while not self.stop_evt.wait(5):
+            ln = self.lantern
+            if ln is not None and ln.proc is not None and not ln.alive():        # crashed (stop() clears proc)
+                if len(ln.starts) >= 5:
+                    log("Lantern engine keeps failing: leaving it stopped")
+                    ln.proc = None
+                else:
+                    log("Lantern engine stopped unexpectedly: restarting ...")
+                    try:
+                        ln.restart()
+                    except Exception as e:
+                        log("Lantern restart failed:", e)
             if not self.core.alive():
                 now = time.time()
                 crashes = [t for t in crashes if now - t < 300] + [now]
@@ -1144,7 +1429,12 @@ def start_session(cfg):
         sys.exit("already running (use: python chain.py off)")
     if STATE_FILE.exists():             # previous crash: bring settings back first
         sys_proxy_restore()
-    srcs = load_sources()
+    a_sub, b_sub = subscription_sources()
+    prof_a, prof_b = load_profiles(FIRST_PROFILES, "A profiles"), load_profiles(EXIT_PROFILES, "B profiles")
+    lantern = Lantern(cfg) if cfg["lantern_enabled"] else None
+    if not (lantern or a_sub or b_sub or prof_a or prof_b):
+        sys.exit("no source configured: enable Lantern, set a subscription link or add v2ray profiles "
+                 "(Settings, or subs.txt / profiles_first.txt / profiles_exit.txt)")
     try:
         ensure_core()
     except Exception as e:
@@ -1165,15 +1455,45 @@ def start_session(cfg):
     if not core_run(["version"])[0] == 0:
         validator = None
 
-    A_nodes = fetch_nodes(srcs[0], "A")
-    B_nodes = fetch_nodes(srcs[1], "B") if len(srcs) > 1 else []
-    if not A_nodes and not B_nodes:
-        sys.exit("no usable nodes in either subscription")
-    log("probing nodes ...")
-    A = pick(A_nodes, cfg["top_k"], cfg["tcp_timeout"], "A", validator) if A_nodes else {}
-    B = pick(B_nodes, cfg["top_k"], cfg["tcp_timeout"], "B", validator) if B_nodes else {}
+    try:
+        if lantern:
+            lantern.begin()                   # runs in the background while the lists are fetched
+        A_nodes = fetch_nodes(a_sub, "A") if a_sub else []
+        B_nodes = fetch_nodes(b_sub, "B") if b_sub else []
+        if not (A_nodes or B_nodes or prof_a or prof_b or lantern):
+            sys.exit("no usable nodes in any source")
+        log("probing nodes ...")
+        tcp = cfg["tcp_timeout"]
+        A_sub = pick(A_nodes, cfg["top_k"], tcp, "A", validator) if A_nodes else {}
+        A_prof = pick(prof_a, cfg["top_k_profiles"], tcp, "A", validator, start=101) if prof_a else {}
+        B_sub = pick(B_nodes, cfg["top_k"], tcp, "B", validator) if B_nodes else {}
+        B_prof = pick(prof_b, cfg["top_k_profiles"], tcp, "B", validator, start=101) if prof_b else {}
+        A, B, tier = {}, {}, {}
+        if lantern:
+            log("waiting for Lantern ...")
+            if lantern.wait_ready(cfg["lantern_timeout"]):
+                A["A0"] = lantern.node()
+                tier["A0"] = 1
+                log("Lantern is connected (first hop, priority 1)")
+            else:
+                log(f"Lantern is not available ({lantern.error or 'no answer'}); going on without it")
+        for part, t in ((A_sub, 2), (A_prof, 3)):
+            A.update(part)
+            tier.update({k: t for k in part})
+        for part, t in ((B_sub, 1), (B_prof, 2)):
+            B.update(part)
+            tier.update({k: t for k in part})
+        if not A and not B:
+            sys.exit("no usable nodes: " + (f"Lantern: {lantern.error}; " if lantern and lantern.error else "")
+                     + "check the subscription links / profiles")
+    except BaseException:
+        if lantern:
+            lantern.stop()
+        raise
 
     app = App(cfg)
+    app.lantern = lantern
+    app.tier = tier
     app.names_src = {"A": A, "B": B}
     app.names = {t: n for t, (n, _) in {**A, **B}.items()}
 
@@ -1260,6 +1580,23 @@ def main():
             print("sing-box OK:", core_run(["version"])[1].splitlines()[0])
     elif cmd == "guard" and len(sys.argv) > 2:
         guard(int(sys.argv[2]))
+    elif cmd == "quit":                  # installer / updater: stop the session AND close the window in the tray
+        gui_running = not port_free(cfg["gui_port"])
+        (BASE / ".quit_request").write_text(str(time.time()))      # the window consumes it and exits
+        r = control_send(cfg, "off", 10)
+        if r is None:
+            sys_proxy_restore()
+            kill_stale_core()
+        if gui_running:                                          # wait until the window process is really gone
+            t0 = time.time()
+            while (BASE / ".quit_request").exists() and time.time() - t0 < 8:
+                time.sleep(0.3)
+            while not port_free(cfg["gui_port"]) and time.time() - t0 < 15:    # it holds this port until it exits
+                time.sleep(0.3)
+            time.sleep(0.7)
+        else:
+            (BASE / ".quit_request").unlink(missing_ok=True)
+        print("quit requested" if r is None else r)
     elif cmd == "off":
         r = control_send(cfg, "off", 10)
         if r is None:                    # not running: restore settings, remove an orphan core

@@ -132,6 +132,9 @@ claude
 | `make pdf` | ساخت PDF راهنمای سریع از `docs/QUICKSTART.md` (pandoc + chromium روی میزبان) | چند ثانیه |
 | `make installer` | ساخت دو نصب‌کننده‌ی `dist/ChainProxy-Setup-<ver>.exe` و `...-Full-...` با Inno Setup **داخل VM** (اگر نباشد با بررسی امضا خودش نصب می‌شود) | ~۲ دقیقه |
 | `make vm-installer` / `make vm-installer-full` (و `python3 dev/vm/vmtest.py installer --full --python full\|notk` برای «Python از قبل هست / بدون tkinter») | آزمون نصب‌کننده در VM: نصب، اجرای اول (`setup.ps1`، Python، sing-box)، ارتقا (حفظ `subs.txt`)، حذف | ۱ تا ۳ دقیقه |
+| `make lantern` | ساخت موتور Lantern (`dist/engine/chainlantern-<commit>-windows-amd64.zip`) از commit سنجاق‌شده‌ی radiance با Go (روی میزبان؛ بدون کامپایلر C برای ویندوز) | ~۱ تا ۴ دقیقه |
+| `make vm-lantern` | موتور واقعی روی VM: زنجیره‌ی Lantern→لیست GeminiRoute، IP خروجی، gemini، توقف با جلسه (اینترنت لازم است) | ~۲ دقیقه |
+| `make vm-update` | آزمون به‌روزرسانی خودکار: نصب‌کننده‌ی جاری + release جعلی `9.9.9` روی سرور HTTP میزبان | ~۲ دقیقه |
 | `make vm-clean` | **همه‌ی آثار پروژه را از VM پاک می‌کند** (کپی تست، برنامه‌ی نصب‌شده، نصب‌کننده‌ها، میانبرها، Python و Inno Setup، تنظیم پروکسی). OpenSSH/sshd، کلید، autologon و کاربر دست‌نخورده می‌مانند | ~۱ دقیقه |
 | `make vm-clean-light` | همان ولی Python و Inno Setup می‌مانند (چرخه‌ی سریع‌تر) | ~۳۰ ثانیه |
 

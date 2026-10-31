@@ -226,12 +226,12 @@ class VmToolTests(unittest.TestCase):
         self.assertIn("repo/dev/vm/guest/common.ps1", names)
         self.assertIn("repo/dev/lab/e2e_client.py", names)
         self.assertIn("repo/offline/python-3.12.10-amd64.exe", names)
-        self.assertEqual(len(staged), 2)
+        self.assertEqual(len([n for n in staged if not n.startswith("chainlantern")]), 2)   # + the engine zip if built
         self.assertNotIn("repo/dev/vm/vm.conf", names)               # local settings stay home
         for bad in ("/.ssh/", "/cache/", "/artifacts/", "__pycache__", "/.git/"):
             self.assertFalse(any(bad in n for n in names), f"{bad} must not be deployed")
         _, staged_online = self.vm.build_tar(online=True)
-        self.assertEqual(staged_online, [])
+        self.assertEqual([n for n in staged_online if not n.startswith("chainlantern")], [])
 
     def test_deploy_plumbing(self):
         self.log.write_text("")

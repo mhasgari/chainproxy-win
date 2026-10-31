@@ -30,7 +30,7 @@ if ($PrePython) {
 Say "install ($Setup)"
 $p = Start-Process $s -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/TASKS=desktopicon', "/LOG=$HOME\installer-inno.log" -Wait -PassThru
 Check ($p.ExitCode -eq 0) "installer exit code ($($p.ExitCode))"
-foreach ($f in 'chain.py', 'gui.py', 'Run.bat', 'setup.ps1', 'stop.bat', 'LICENSE', 'chainproxy.ico', 'subs.txt', 'config.json',
+foreach ($f in 'chain.py', 'gui.py', 'tray.py', 'quit.bat', 'assets\chainproxy-48.png', 'assets\chainproxy-256.png', 'Run.bat', 'setup.ps1', 'stop.bat', 'LICENSE', 'chainproxy.ico', 'subs.txt', 'config.json',
               'docs\Chain-Proxy-Quick-Start-fa.pdf', 'docs\QUICKSTART.md', 'unins000.exe') {
     Check (Test-Path "$app\$f") "installed: $f"
 }
@@ -40,6 +40,7 @@ $bytes = [IO.File]::ReadAllBytes("$app\Run.bat")
 Check (($bytes | Where-Object { $_ -eq 13 }).Count -gt 0) 'Run.bat has CRLF line endings'
 if ($Full) {
     Check (Test-Path "$app\THIRD-PARTY-NOTICES.txt") 'third-party notices installed'
+    Check ((Get-ChildItem "$app\offline\chainlantern-*-windows-amd64.zip").Count -eq 1) 'the Lantern engine package is inside'
     Check ((Get-ChildItem "$app\offline\python-*.exe").Count -eq 1 -and (Get-ChildItem "$app\offline\sing-box-*windows*.zip").Count -eq 1) 'Python installer and sing-box zip are inside'
 } else {
     Check (-not (Get-ChildItem "$app\offline\*.exe", "$app\offline\*.zip" -ErrorAction SilentlyContinue)) 'light installer carries no Python / sing-box'

@@ -33,11 +33,11 @@ Chain Proxy یک **هماهنگ‌کننده** (orchestrator) روی هسته‌
    │ chain.py                                                   │
    │  fetch_nodes → pick/validate → build_config → Core.start   │
    │  App.build_rank → App.go/go_to → verify → sys_proxy_set    │
-   │  watchdog · control server (127.0.0.1:19091)               │
+   │  watchdog · control server (127.0.0.1:42817)               │
    └───────────┬───────────────────────────────┬────────────────┘
-               │ Clash API 127.0.0.1:19090     │ HKCU\...\Internet Settings
+               │ Clash API 127.0.0.1:42816     │ HKCU\...\Internet Settings
                ▼                               ▼
-         sing-box (mixed 127.0.0.1:10808)   پروکسی سیستم ویندوز ◄── Chrome/Edge
+         sing-box (mixed 127.0.0.1:42815)   پروکسی سیستم ویندوز ◄── Chrome/Edge
                │
         A ──► B ──► اینترنت
 ```
@@ -50,8 +50,13 @@ Chain Proxy یک **هماهنگ‌کننده** (orchestrator) روی هسته‌
 |---|---|
 | `Run.bat` | نقطه‌ی ورود (دابل‌کلیک/میانبر). `setup.ps1` را اجرا می‌کند؛ در خطا `pause`. حالت‌ها: بدون آرگومان (پنجره)، `cli`، `shortcut`. |
 | `setup.ps1` | راه‌انداز: یافتن/نصب Python، `chain.py ensure`، ساخت میانبرها، اجرای برنامه. |
-| `chain.py` | تمام منطق: پارس، کانفیگ، هسته، پروکسی ویندوز، نگهبان، کنترل، CLI. |
-| `gui.py` | پنجره‌ی tkinter؛ لایه‌ی نازک روی `chain.App`. |
+| `chain.py` | تمام منطق: پارس، کانفیگ، هسته، منابع و اولویت‌ها، موتور Lantern، پروکسی ویندوز، نگهبان، کنترل، به‌روزرسانی، CLI. |
+| `gui.py` | پنجره‌ی tkinter (ttk، تم `clam` با رنگ‌های اختصاصی)، Settings چهار زبانه، تک‌نمونه‌بودن، به‌روزرسانی؛ لایه‌ی نازک روی `chain.App`. |
+| `tray.py` | آیکون ناحیه‌ی اعلان‌ها با ctypes (بدون بسته‌ی اضافه): پنجره‌ی مخفی روی ترد جدا، منو، balloon، `TaskbarCreated`، `WM_ENDSESSION`. |
+| `assets/` | PNGهای آیکون (16..256)؛ پنجره فقط با `iconphoto` آن‌ها را می‌گذارد. `chainproxy.ico` با `dev/make_icons.py` ساخته می‌شود. |
+| `quit.bat` | مثل `stop.bat` + بستن پنجره‌ی داخل tray (`chain.py quit`)؛ نصب‌کننده/حذف‌کننده/به‌روزرسانی از آن استفاده می‌کنند. |
+| `profiles_first.txt`, `profiles_exit.txt` | لینک‌های v2ray کاربر برای هاپ اول/آخر (در گیت نیستند). |
+| `engine/` | `chainlantern.exe` بازشده (در زمان اجرا؛ در گیت نیست). |
 | `config.json` | تنظیمات کاربر (روی پیش‌فرض‌های `DEFAULTS` ادغام می‌شود). |
 | `LICENSE` | MIT. |
 | `subs.example.txt` | قالب `subs.txt` (خط اول نمونه، خط دوم لیست best از GeminiRoute). |
@@ -62,7 +67,7 @@ Chain Proxy یک **هماهنگ‌کننده** (orchestrator) روی هسته‌
 | `installer/` | اسکریپت Inno Setup (`chainproxy.iss`) و `THIRD-PARTY-NOTICES.txt` نسخه‌ی Full. ساخت: `make installer` (داخل VM). |
 | `docs/` | `QUICKSTART.md` + PDF آن (`make pdf`)، `USER-GUIDE.md`، `DEVELOPER.md`. |
 | `tests/` | `run_tests.py`، `gui_smoke.py` و `mock_core.py` (بخش ۱۱). |
-| `dev/` | ابزار توسعه (در بسته‌ی کاربر نیست): آزمایشگاه e2e (`dev/lab/`)، راننده‌ی VM ویندوز (`dev/vm/`)، `setup-cachyos.sh`، `package.py`، `make_pdf.py`، `make_installer.py`. راهنما: [dev/README.md](../dev/README.md). |
+| `dev/` | ابزار توسعه (در بسته‌ی کاربر نیست): آزمایشگاه e2e (`dev/lab/`)، راننده‌ی VM ویندوز (`dev/vm/`)، `setup-cachyos.sh`، `package.py`، `make_pdf.py`، `make_installer.py`، `make_icons.py`، `build_lantern.py` و `dev/lantern/chainlantern/main.go` (راه‌انداز Go موتور Lantern). راهنما: [dev/README.md](../dev/README.md). |
 | `Makefile`, `CLAUDE.md`, `.claude/` | فرمان‌های توسعه و تنظیمات Claude Code. |
 | **تولیدشده در زمان اجرا** | |
 | `core/` | `sing-box.exe` و DLLهای همراه. |
@@ -127,7 +132,7 @@ Transportها در `transport_block`: `ws` (با تبدیل `?ed=N` به `max_ea
 ```jsonc
 {
   "log": {"level": "warn", "timestamp": true},
-  "inbounds": [{"type": "mixed", "tag": "in", "listen": "127.0.0.1", "listen_port": 10808}],
+  "inbounds": [{"type": "mixed", "tag": "in", "listen": "127.0.0.1", "listen_port": 42815}],
   "outbounds": [
     {"type": "direct", "tag": "direct"},
     {"...": "A1..Ak, B1..Bk (outbound هر نود، tag = A1 …)"},
@@ -142,7 +147,7 @@ Transportها در `transport_block`: `ws` (با تبدیل `?ed=N` به `max_ea
     "default_domain_resolver": "local"              // فقط modern
   },
   "dns": {"servers": [{"type": "local", "tag": "local"}]},   // فقط modern
-  "experimental": {"clash_api": {"external_controller": "127.0.0.1:19090"}}
+  "experimental": {"clash_api": {"external_controller": "127.0.0.1:42816"}}
 }
 ```
 
@@ -218,14 +223,14 @@ idempotent است (`cleaned`)، `stop_evt` را set می‌کند، سرور ک�
 
 | کلید | پیش‌فرض | توضیح |
 |---|---|---|
-| `mixed_port` | `10808` | پورت HTTP/SOCKS محلی (هدف پروکسی ویندوز). |
-| `api_port` | `19090` | Clash API هسته (فقط `127.0.0.1`). |
-| `control_port` | `19091` | سوکت کنترل برنامه (فقط `127.0.0.1`). |
+| `mixed_port` | `42815` | پورت HTTP/SOCKS محلی (هدف پروکسی ویندوز). |
+| `api_port` | `42816` | Clash API هسته (فقط `127.0.0.1`). |
+| `control_port` | `42817` | سوکت کنترل برنامه (فقط `127.0.0.1`). |
 | `top_k` | `5` | تعداد نودِ برگزیده از هر لیست. تعداد زنجیره‌ها `k²` است. |
 | `tcp_timeout` | `3.0` | مهلت TCP probe (ثانیه). |
 | `delay_timeout_ms` | `7000` | مهلت تست تاخیر هر مسیر. |
 | `check_urls` | gstatic + cloudflare `generate_204` | آدرس‌های تست تاخیر؛ همه باید پاسخ دهند. |
-| `strict_urls` | `[]` | آدرس‌هایی که باید با وضعیت `< 400` از مسیر عبور کنند. |
+| `strict_urls` | `["https://gemini.google.com"]` | آدرس‌هایی که باید با وضعیت `< 400` از مسیر عبور کنند. |
 | `blocked_countries` | `["IR"]` | کشورهای ممنوع برای IP خروجی. |
 | `direct_suffixes` | `[".ir"]` | دامنه‌هایی که مستقیم می‌روند. |
 | `bypass` | شبکه‌های خصوصی + `<local>` | مقدار `ProxyOverride` ویندوز. |
@@ -235,6 +240,17 @@ idempotent است (`cleaned`)، `stop_evt` را set می‌کند، سرور ک�
 | `geo_url` | `"https://ipinfo.io/json"` | سرویس تشخیص IP/کشور خروجی (پاسخ JSON با `ip`, `country`, `org`). خالی = بدون بررسی کشور. |
 | `geo_fallback_urls` | `["https://api.country.is/", "https://ipwho.is/"]` | سرویس‌های جایگزین وقتی `geo_url` جواب ندهد. |
 | `verify_timeout` | `12` | ثانیه برای هر درخواست تأیید مسیر. |
+| `lantern_enabled` | `true` | هاپ اول، اولویت ۱: موتور Lantern. |
+| `lantern_port` | `42819` | پورت SOCKS loopback موتور. |
+| `lantern_timeout` | `90` | ثانیه‌ی انتظار برای آماده‌شدن Lantern؛ پس از آن بدون آن ادامه می‌دهد. |
+| `top_k_profiles` | `3` | تعداد نود از هر فهرست پروفایل v2ray. |
+| `auto_update` | `true` | نصب خودکار نسخه‌ی جدید (فقط نسخه‌ی نصب‌شده با نصب‌کننده). |
+| `update_check_hours` | `6` | فاصله‌ی بررسی نسخه‌ی جدید. |
+| `update_repo` | `"mhasgari/chainproxy-win"` | مخزن GitHub برای `releases/latest`. |
+| `update_api` | `""` | جایگزین آدرس `releases/latest` (تست‌ها). |
+| `update_first_check_seconds` | `45` | تاخیر اولین بررسی پس از باز شدن پنجره. |
+| `close_to_tray` | `true` | بستن پنجره، برنامه را در tray نگه می‌دارد. |
+| `gui_port` | `42818` | پورت loopback که پنجره را تک‌نمونه می‌کند. |
 | `rank_by_speed` | `false` | `true` = ترتیب لیست فقط سرعتی (به‌جای زنجیره‌ها، بعد B، بعد A). |
 | `private_direct` | `true` | مقصدهای خصوصی/LAN مستقیم بروند. آزمایشگاه e2e آن را `false` می‌کند. |
 
@@ -290,7 +306,7 @@ idempotent است (`cleaned`)، `stop_evt` را set می‌کند، سرور ک�
 | VM ویندوز | `make vm-all` | ویندوز واقعی: `setup.ps1`، نصب Python، میانبرها، رجیستری، GUI روی دسکتاپ، sing-box ویندوزی |
 
 ### ۱۱.۱ آزمون‌های واحد
-۲۹ آزمون بدون هسته‌ی واقعی، شبکه یا ویندوز. هر اجرا پروژه را در پوشه‌ی موقت کپی می‌کند، ساپسکریپشن نمونه می‌نویسد و `CHAIN_CORE` را به `tests/mock_core.py` می‌دهد (`core_cmd()` هسته‌ی `.py` را با همان Python اجرا می‌کند؛ روی ویندوز هم). پورت‌ها: `20808/20090/20091`.
+۳۸ آزمون بدون هسته‌ی واقعی، شبکه یا ویندوز. هر اجرا پروژه را در پوشه‌ی موقت کپی می‌کند، ساپسکریپشن نمونه می‌نویسد و `CHAIN_CORE` را به `tests/mock_core.py` می‌دهد (`core_cmd()` هسته‌ی `.py` را با همان Python اجرا می‌کند؛ روی ویندوز هم). پورت‌ها: `20808/20090/20091`.
 
 | گروه | چه چیزی را می‌سنجد |
 |---|---|
@@ -368,3 +384,27 @@ idempotent است (`cleaned`)، `stop_evt` را set می‌کند، سرور ک�
 - سوکت کنترل بدون احراز هویت (فقط لوکال).
 - تشخیص کشور به یک سرویس خارجی (`ipinfo.io`) وابسته است؛ می‌توان چندین منبع یا پایگاه GeoIP محلی افزود.
 - ایده‌ها: اجرا با شروع ویندوز، آیکون system tray، ذخیره‌ی «آخرین مسیر موفق»، امتیازدهی پایداری مسیر در طول زمان، به‌روزرسانی خودکار هسته.
+
+
+---
+
+## ۱۵. Lantern، منابع، tray و به‌روزرسانی (نسخه‌ی ۱.۳)
+
+### ۱۵.۱ منابع و اولویت
+`start_session` منابع را می‌خواند: `subscription_sources()` (خط ۱ و ۲ `subs.txt`؛ لینک `example.com/sub/` یعنی تنظیم‌نشده)، `load_profiles(FIRST_PROFILES|EXIT_PROFILES)` (فقط خط‌هایی که `parse_node` می‌فهمد)، و در صورت `lantern_enabled` یک `Lantern`. موتور در پس‌زمینه شروع می‌شود (`begin()`) و در این فاصله فهرست‌ها دانلود و `pick` می‌شوند. تگ‌ها: Lantern `A0`، ساپسکریپشن‌ها `A1..`/`B1..`، پروفایل‌ها `A101..`/`B101..`. `App.tier`: هاپ اول ۱ Lantern، ۲ ساپسکریپشن، ۳ پروفایل؛ هاپ آخر ۱ ساپسکریپشن، ۲ پروفایل. `build_rank` مسیرها را با کلید `(tier هاپ اول، tier هاپ آخر، تاخیر)` مرتب می‌کند (`rank_by_speed` = فقط تاخیر). `App.source_label` ستون Source را می‌سازد. اگر Lantern آماده نشود (`wait_ready`) فقط لاگ می‌شود و جلسه بدون آن ادامه می‌دهد؛ اگر موتور وسط کار بمیرد، `watchdog` تا ۵ بار در ۵ دقیقه دوباره راهش می‌اندازد. گره Lantern یک outbound از نوع `socks` به `127.0.0.1:lantern_port` است؛ گره‌های هاپ آخر با `detour` از آن عبور می‌کنند. (UDP مثل hysteria2 از SOCKS عبور نمی‌کند: چنین مسیری در تست تاخیر حذف می‌شود.)
+
+### ۱۵.۲ موتور Lantern (`chainlantern`)
+Lantern برنامه‌ی Flutter + هسته‌ی Go است (GPL-3.0). هسته‌ی آن `github.com/getlantern/radiance` است و `lanternd` آن سرویس سیستمی/TUN است که ادمین می‌خواهد و IPC آن روی pipe ثابت (HTTP/2 بدون TLS) و پورت‌نشده برای کلاینت ثالث است. راه‌حل: `dev/lantern/chainlantern/main.go` (حدود ۱۰۰ خط) داخل checkout سنجاق‌شده‌ی radiance با تگ **`novpn`** (ورودی mixed/SOCKS5 به‌جای TUN) ساخته می‌شود: `LocalBackend` را مستقیم می‌سازد، کاربر ناشناس می‌سازد، `ConnectVPN("auto")` می‌زند (انتخاب خودکار بهترین سرور رایگان) و روی stdout خط‌های `CHAINLANTERN READY|STATUS|ERROR` می‌نویسد؛ با بسته‌شدن stdin خارج می‌شود. بدون ادمین، بدون سرویس، بدون pipe (با Lantern نصب‌شده تداخل ندارد).
+- ساخت: `python3 dev/build_lantern.py` (commit در خود اسکریپت سنجاق است؛ Go 1.26.x را خودش می‌گیرد؛ `CGO_ENABLED=0` برای ویندوز؛ zip قطعی با sha256 ثابت) ← `dist/engine/chainlantern-<commit>-windows-amd64.zip`.
+- توزیع: zip به release با تگ `engine-<commit>` (pre-release تا «latest» به‌روزرسان نشود) آپلود می‌شود و sha256 آن در `LANTERN_ENGINE` (chain.py) ثابت است. `install_engine()` ابتدا `offline\chainlantern-*.zip` (نصب‌کننده‌ی Full) و بعد دانلود را می‌پذیرد و بسته‌ی با هش نامطابق را رد می‌کند.
+- مجوز: GPL-3.0؛ zip شامل `LICENSE` و `SOURCE.txt`؛ `installer/THIRD-PARTY-NOTICES.txt` منبع و commit را می‌گوید. ارتقای radiance = commit جدید در `build_lantern.py` + آپلود + sha256 تازه + `make vm-lantern`.
+- تست: `tests/mock_lantern.py` (همان پروتکل)، `make vm-lantern` (موتور واقعی روی VM ← زنجیره‌ی Lantern→GeminiRoute، IP خروجی، gemini ۲۰۰، توقف با جلسه).
+
+### ۱۵.۳ tray، آیکون، تک‌نمونه
+- `tray.py`: `Tray(icon, tip, on_command, get_menu, on_endsession)`. منو با `TrackPopupMenu(TPM_RETURNCMD)`؛ `on_command` فقط در صف GUI می‌گذارد. `WM_ENDSESSION` ← پروکسی بازگردانده می‌شود (Logoff/Shutdown). اگر tray نبود، بستن پنجره خروج است.
+- **آیکون:** در پنجره **فقط** `iconphoto(True, PNGها)`؛ استفاده‌ی هم‌زمان از `iconbitmap(default=ico)` روی Windows 11 / Tk 8.6.15 لوگوی Python را در taskbar و نوار عنوان می‌آورد (با اسکرین‌شات ثابت شد). `SetCurrentProcessExplicitAppUserModelID("mhasgari.ChainProxy")` و `AppUserModelID` میانبرهای Inno باعث می‌شود اعلان‌ها «Chain Proxy» بگویند نه «Python». `chainproxy.ico` قبلاً فقط یک PNG ۲۵۶ بود؛ اکنون ۱۰ اندازه (BMP برای ≤۱۲۸ و PNG برای ۲۵۶، `dev/make_icons.py`).
+- تک‌نمونه: `gui.single_instance(gui_port)`؛ نمونه‌ی دوم به اولی `show` می‌فرستد.
+
+### ۱۵.۴ به‌روزرسانی خودکار
+`latest_release` (`api.github.com/.../releases/latest`، فقط تگ `vX.Y.Z`) ← `update_available` ← `download_update` (asset `ChainProxy-Setup-X.Y.Z.exe`؛ **sha256 از `digest` متادیتای GitHub** اجباری است، بدون آن فقط اعلان) ← `apply_update` (نصب‌کننده با `/VERYSILENT /LAUNCH=1` جدا از فرایند؛ نشانه‌ی `.resume_enabled` اگر فعال بود) ← برنامه خارج می‌شود. نصب‌کننده `quit.bat` را اجرا می‌کند، فایل‌ها را عوض می‌کند و با `/LAUNCH=1` برنامه را باز می‌کند؛ پنجره‌ی تازه `.resume_enabled` را می‌بیند و دوباره Enable می‌کند. `subs.txt`، `config.json`، `profiles_*.txt` دست‌نخورده می‌مانند. نسخه‌ی portable (بدون `unins000.exe`) فقط اعلان می‌دهد. امنیت: هش و فایل هر دو از GitHub می‌آیند؛ در برابر خرابی محافظت می‌کند، نه در برابر نفوذ به حساب GitHub؛ نصب‌کننده امضای دیجیتال ندارد.
+- تست: واحد (`test_update_check_and_download`) و `make vm-update` (نصب‌کننده‌ی جاری + release جعلی `9.9.9` روی سرور HTTP میزبان ← خودبه‌روزرسانی، یک پنجره بعد از آن، حفظ داده، بسته‌شدن پنجره‌ی tray توسط حذف‌کننده).

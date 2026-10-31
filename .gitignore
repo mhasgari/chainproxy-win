@@ -9,6 +9,11 @@
 
 # YOUR subscription links: never commit (subs.example.txt is the template)
 /subs.txt
+/profiles_first.txt
+/profiles_exit.txt
+/engine/
+/.resume_enabled
+/.quit_request
 /update-*.zip
 
 # build / test output
@@ -25,3 +30,4 @@ __pycache__/
 
 # personal Claude Code settings
 /.claude/settings.local.json*
+/dev/cache/

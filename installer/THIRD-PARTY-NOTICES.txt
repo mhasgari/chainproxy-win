@@ -1,16 +1,23 @@
 Third-party software bundled in the "Full" installer (folder "offline")
 =====================================================================
 
-These files are copied unmodified from their official sources. They are only used by
-Chain Proxy's first-run setup (Run.bat) when they are not already installed.
+These files are only used by Chain Proxy's first-run setup (Run.bat) and by the Lantern option, when they
+are not already installed. Each runs as a SEPARATE program; Chain Proxy itself (MIT) is not linked to them.
 
-Python 3.12.10 (python-3.12.10-amd64.exe)
+Python 3.12.10 (python-3.12.10-amd64.exe) - unmodified
   Source:  https://www.python.org/downloads/windows/
   License: Python Software Foundation License, https://docs.python.org/3/license.html
 
-sing-box 1.14.4 (sing-box-1.14.4-windows-amd64.zip)
+sing-box 1.14.4 (sing-box-1.14.4-windows-amd64.zip) - unmodified
   Source:  https://github.com/SagerNet/sing-box/releases  (source code: https://github.com/SagerNet/sing-box)
   License: GNU GPL v3 or later with additional terms, https://github.com/SagerNet/sing-box/blob/main/LICENSE
 
-Chain Proxy itself is MIT licensed (see LICENSE). sing-box runs as a separate program; it is
-not linked into Chain Proxy.
+Lantern engine "chainlantern" (chainlantern-72fe1e9-windows-amd64.zip)
+  Lantern's open-source client backend, https://github.com/getlantern/radiance at commit
+  72fe1e906ee530a9784e9c1337b26d1a198fe73f, built headless with the `novpn` tag (local SOCKS5 inbound, no TUN) plus a
+  small launcher, dev/lantern/chainlantern/main.go in https://github.com/mhasgari/chainproxy-win.
+  License: GNU GPL v3 or later (radiance, sing-box-minimal, and the other Lantern libraries it links; the zip carries
+  the LICENSE text and SOURCE.txt). Corresponding source: the two repositories above, plus the Go modules listed in
+  radiance's go.mod / go.sum. Rebuild with `python3 dev/build_lantern.py` (see its docstring).
+  Lantern(R) is a trademark of its owners; Chain Proxy is not affiliated with or endorsed by Lantern. The free plan
+  is subject to Lantern's own terms of service (https://lantern.io).
