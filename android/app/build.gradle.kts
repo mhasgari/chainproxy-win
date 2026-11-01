@@ -15,8 +15,8 @@ android {
         applicationId = "app.chainproxy"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.2.1"
     }
 
     // One APK per CPU architecture (about 45 MB each instead of one 150 MB file): arm64-v8a = nearly every phone since

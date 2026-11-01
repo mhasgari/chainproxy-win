@@ -17,6 +17,11 @@ goes to `dist/` for the user's phone. Keystore stays out of git.
 - [ ] 10. Emulator end-to-end test (lab via 10.0.2.2) + real Lantern if the network allows; signed release APK in `dist/`
 
 ## Log
+- 2026-11-01 v0.2.1 (user's phone test of 0.2.0: works). Quick Settings tile now has its own icon (two interlocked rings, white on
+  transparent, `res/drawable/ic_tile.xml`) instead of the filled launcher square; the tile hint was shown twice on Android < 13 (card
+  subtitle + note) and now only once. Verified: 18 JVM tests, emulator session + TUN tests PASS (the session test's `next` check failed
+  once on a repeated route line and passed on re-run: flaky comparison, not a product bug), signed APKs verified with apksigner.
+  The tile icon itself was not seen on a device.
 - 2026-11-01 v0.2.0 (after the user's phone test of 0.1: works). Changes: default exit subscription = GeminiRoute best list;
   First hop / Exit hop are separate cards; new theme + power-button home; Quick Settings tile prompt (API 33 requestAddTileService);
   neutral identity (package `app.chainproxy`, cert CN=Chain Proxy, encoded release repo); one APK per ABI (arm64-v8a, armeabi-v7a,

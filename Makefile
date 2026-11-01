@@ -108,5 +108,5 @@ android-apk:         ## Android: signed release APK -> dist/ChainProxy-<version>
 android-emu-test:    ## Android: debug APK on the emulator + lab session test (emulator must run: dev/android/emu.sh start)
 	dev/android/gradlew.sh :app:assembleDebug
 	. dev/android/env.sh && adb install -r android/app/build/outputs/apk/debug/app-x86_64-debug.apk
-	python3 dev/android/emu_session_test.py
-	python3 dev/android/emu_vpn_test.py
+	. dev/android/env.sh && python3 dev/android/emu_session_test.py
+	. dev/android/env.sh && python3 dev/android/emu_vpn_test.py

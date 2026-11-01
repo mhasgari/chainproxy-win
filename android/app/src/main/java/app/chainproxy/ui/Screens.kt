@@ -178,7 +178,7 @@ fun HomeScreen(onToggle: () -> Unit, onAction: (String) -> Unit) {
                 }
             }
             SectionCard(Icons.Filled.ViewQuilt, stringResource(R.string.quick_settings), stringResource(R.string.tile_hint)) {
-                if (tileNote.isNotEmpty()) Text(tileNote, style = MaterialTheme.typography.bodySmall)
+                if (tileNote.isNotEmpty() && tileNote != ctx.getString(R.string.tile_hint)) Text(tileNote, style = MaterialTheme.typography.bodySmall)
                 OutlinedButton(onClick = { tileNote = requestTile(ctx) }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.add_tile)) }
             }
             Spacer(Modifier.height(16.dp))
@@ -191,7 +191,7 @@ private fun requestTile(ctx: Context): String {
     if (Build.VERSION.SDK_INT < 33) return ctx.getString(R.string.tile_hint)
     return try {
         ctx.getSystemService(StatusBarManager::class.java).requestAddTileService(
-            ComponentName(ctx, ChainTileService::class.java), "Chain Proxy", Icon.createWithResource(ctx, R.drawable.ic_launcher),
+            ComponentName(ctx, ChainTileService::class.java), "Chain Proxy", Icon.createWithResource(ctx, R.drawable.ic_tile),
             ctx.mainExecutor) {}
         ctx.getString(R.string.tile_requested)
     } catch (e: Exception) { ctx.getString(R.string.tile_hint) }

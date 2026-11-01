@@ -9,13 +9,13 @@ The user writes in Persian. Answer in Persian; keep code, comments, UI strings a
 messages in English (Windows consoles mangle RTL text). End-user and developer docs are
 Persian (`docs/`, `dev/README.md`).
 
-## Verified state (2026-11-01; desktop 1.3.2, Android 0.2.0)
+## Verified state (2026-11-01; desktop 1.3.2, Android 0.2.1)
 Desktop: `make check` PASS (lint, 42 unit, 13 dev-tool, GUI smoke on Xvfb incl. collapsed log, local e2e). Windows 11 VM: deploy,
 install, unit (42), e2e (real sing-box) PASS, `vm-installer-full` PASS; the VM GUI stage was SKIPPED (the VM desktop sat at the lock
 screen and logging in needs the user's password) so the 1.3.2 window changes (flat status text, collapsed log, hand cursor) were
 checked under Tk on Linux only. Not yet verified: Chrome itself, a Windows 10 VM, a clean-machine first run without `offline/`.
 Android: 18 JVM tests, emulator lab session + TUN tests PASS (x86_64 debug), real Lantern on the emulator; 0.1 was tested on the
-user's real phone (worked), 0.2 (new UI, package `app.chainproxy`, per-ABI APKs, armv7 build) only on the emulator.
+user's real phone (worked), 0.2.0 was also tested on the phone (works, incl. finding the tile); 0.2.1 (tile icon, no duplicate hint) only on the emulator.
 
 ## Codebase index (codebase-memory-mcp) - use it first
 This project is indexed as `home-hadi-projects-chainproxy-win` (git-watch keeps it fresh; re-index with
