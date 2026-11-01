@@ -50,7 +50,7 @@ def main():
         wait_idle(s_after_enable, 600)
 
     def s_after_enable():
-        check(g.state_var.get() == "Active", f"enabled (state={g.state_var.get()!r}, dialogs={dialogs})")
+        check(g.state_var.get().endswith("Active"), f"enabled (state={g.state_var.get()!r}, dialogs={dialogs})")
         check(len(g.tree.get_children()) >= 3, f"route list filled ({len(g.tree.get_children())} rows)")
         check(bool(g.route_var.get()) and "->" in g.route_var.get(), f"route label shown ({g.route_var.get()!r})")
         g.next_btn.invoke()
@@ -76,6 +76,11 @@ def main():
         g.root.update()
         check("active" in g.tree.item("2", "tags"), "the active-route marker survives selecting log text")
         check(bool(g.logbox.get("1.0", "end").strip()), "log box has content")
+        check(not g.log_open and not g.log_frame.winfo_ismapped(), "log is collapsed by default")
+        g.toggle_log()
+        g.root.update()
+        check(g.log_open and g.log_frame.winfo_ismapped(), "the log header expands the log")
+        g.toggle_log()
         reply = env.chain.control_send(cfg, "next", 30)
         check(bool(reply) and reply.startswith("["), f"CLI next while window open -> {reply!r}")
         root.after(1500, s_follow)
@@ -86,13 +91,13 @@ def main():
         wait_idle(s_after_disable, 600)
 
     def s_after_disable():
-        check(g.state_var.get() == "Disabled" and not g.tree.get_children(), "disabled, list cleared")
+        check(g.state_var.get().endswith("Disabled") and not g.tree.get_children(), "disabled, list cleared")
         check(env.chain.port_free(cfg["api_port"]), "core stopped after disable")
         g.toggle()
         wait_idle(s_after_reenable, 600)
 
     def s_after_reenable():
-        check(g.state_var.get() == "Active", "re-enabled in the same process")
+        check(g.state_var.get().endswith("Active"), "re-enabled in the same process")
         # update banner: a portable copy only announces a new version
         info = {"version": "9.9.9", "page": "https://example.invalid/r", "sha256": "", "url": None}
         g.cfg["auto_update"] = True

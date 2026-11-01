@@ -4,7 +4,7 @@ VMTEST  := $(PY) dev/vm/vmtest.py
 XVFB    := $(shell command -v xvfb-run 2>/dev/null)
 
 .DEFAULT_GOAL := help
-.PHONY: help test test-gui test-dev lint check e2e-local package pdf installer clean \
+.PHONY: android-test android-apk android-emu-test help test test-gui test-dev lint check e2e-local package pdf installer clean \
         vm-doctor vm-fetch vm-bootstrap vm-snapshot vm-revert vm-deploy vm-install \
         vm-unit vm-e2e vm-gui vm-lantern vm-update lantern vm-clean vm-clean-light vm-installer vm-installer-full vm-all vm-all-clean vm-shell vm-screenshot vm-logs
 
@@ -100,3 +100,13 @@ vm-screenshot:       ## save the VM screen
 	$(VMTEST) screenshot
 vm-logs:             ## copy runtime logs out of the VM
 	$(VMTEST) pull-logs
+
+android-test:        ## Android: JVM unit tests (golden vectors from chain.py: python3 dev/android/gen_golden.py)
+	dev/android/gradlew.sh :app:testDebugUnitTest
+android-apk:         ## Android: signed release APK -> dist/ChainProxy-<version>.apk
+	dev/android/make_apk.sh
+android-emu-test:    ## Android: debug APK on the emulator + lab session test (emulator must run: dev/android/emu.sh start)
+	dev/android/gradlew.sh :app:assembleDebug
+	. dev/android/env.sh && adb install -r android/app/build/outputs/apk/debug/app-x86_64-debug.apk
+	python3 dev/android/emu_session_test.py
+	python3 dev/android/emu_vpn_test.py

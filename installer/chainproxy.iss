@@ -15,9 +15,7 @@
 AppId={{6F1B9C52-5C0E-4E55-9E0A-C4A1F0B7D2E1}
 AppName=Chain Proxy
 AppVersion={#AppVersion}
-AppPublisher=mhasgari
-AppPublisherURL=https://github.com/mhasgari/chainproxy-win
-AppSupportURL=https://github.com/mhasgari/chainproxy-win/issues
+AppPublisher=Chain Proxy
 DefaultDirName={localappdata}\Programs\ChainProxy
 DefaultGroupName=Chain Proxy
 DisableProgramGroupPage=yes
@@ -48,8 +46,8 @@ Source: "{#StageDir}\*"; DestDir: "{app}"; Excludes: "subs.txt,config.json"; Fla
 
 [Icons]
 ; AppUserModelID = the id gui.py sets: notifications and the taskbar then say "Chain Proxy", not "Python"
-Name: "{autoprograms}\Chain Proxy"; Filename: "{app}\Run.bat"; WorkingDir: "{app}"; IconFilename: "{app}\chainproxy.ico"; AppUserModelID: "mhasgari.ChainProxy"
-Name: "{autodesktop}\Chain Proxy"; Filename: "{app}\Run.bat"; WorkingDir: "{app}"; IconFilename: "{app}\chainproxy.ico"; Tasks: desktopicon; AppUserModelID: "mhasgari.ChainProxy"
+Name: "{autoprograms}\Chain Proxy"; Filename: "{app}\Run.bat"; WorkingDir: "{app}"; IconFilename: "{app}\chainproxy.ico"; AppUserModelID: "ChainProxy.App"
+Name: "{autodesktop}\Chain Proxy"; Filename: "{app}\Run.bat"; WorkingDir: "{app}"; IconFilename: "{app}\chainproxy.ico"; Tasks: desktopicon; AppUserModelID: "ChainProxy.App"
 Name: "{autoprograms}\Chain Proxy Quick Start (PDF)"; Filename: "{app}\docs\Chain-Proxy-Quick-Start-fa.pdf"
 
 [Run]

@@ -9,9 +9,13 @@ The user writes in Persian. Answer in Persian; keep code, comments, UI strings a
 messages in English (Windows consoles mangle RTL text). End-user and developer docs are
 Persian (`docs/`, `dev/README.md`).
 
-## Verified state (last full run on a real Windows 11 VM, 2026-10-31; version 1.3.1)
-`make vm-all`: deploy, install, unit (39), e2e (29 checks, real sing-box, lab logs prove
-VM -> A -> B1) and gui all PASS. Real subscriptions were run once by hand in the VM (download, rank, traffic through the chain, abrupt-kill recovery). Not yet verified: Chrome itself, a Windows 10 VM, a clean-machine first run without the `offline/` files.
+## Verified state (2026-11-01; desktop 1.3.2, Android 0.2.0)
+Desktop: `make check` PASS (lint, 42 unit, 13 dev-tool, GUI smoke on Xvfb incl. collapsed log, local e2e). Windows 11 VM: deploy,
+install, unit (42), e2e (real sing-box) PASS, `vm-installer-full` PASS; the VM GUI stage was SKIPPED (the VM desktop sat at the lock
+screen and logging in needs the user's password) so the 1.3.2 window changes (flat status text, collapsed log, hand cursor) were
+checked under Tk on Linux only. Not yet verified: Chrome itself, a Windows 10 VM, a clean-machine first run without `offline/`.
+Android: 18 JVM tests, emulator lab session + TUN tests PASS (x86_64 debug), real Lantern on the emulator; 0.1 was tested on the
+user's real phone (worked), 0.2 (new UI, package `app.chainproxy`, per-ABI APKs, armv7 build) only on the emulator.
 
 ## Codebase index (codebase-memory-mcp) - use it first
 This project is indexed as `home-hadi-projects-chainproxy-win` (git-watch keeps it fresh; re-index with
@@ -44,7 +48,7 @@ This project is indexed as `home-hadi-projects-chainproxy-win` (git-watch keeps 
 - `make installer` / `python3 dev/make_installer.py` - builds `dist/ChainProxy-Setup-<ver>.exe` with Inno Setup 6 INSIDE the VM (installer/chainproxy.iss; Inno comes from github.com/jrsoftware/issrc releases, check its signature). `make pdf` rebuilds the quick-start PDF; rebuild BEFORE the zip/installer.
 - `make lantern` builds the Lantern engine zip (Go, pinned radiance commit, no C compiler needed for Windows); `make vm-lantern` runs the real engine in the VM (internet); `make vm-update` tests the self-update against a fake release server on the host.
 - `make vm-clean` - removes EVERYTHING the project put into the VM (test copy, installed app, installers, shortcuts, Python, Inno Setup, proxy settings; keeps sshd/key/autologon). `make vm-clean-light` keeps Python + Inno. `make vm-installer` / `vm-installer-full` test a built installer (install, first run, upgrade, uninstall); run `vm-clean` first for a true clean-machine test and again afterwards.
-- `/vm-test`, `/check`, `/release` slash commands wrap the above
+- `/vm-test`, `/check`, `/release` slash commands wrap the above; `/android` checks the Android build tools and continues the Android app (state: `android/PROGRESS.md`, design: ADR "Android app (in progress)")
 
 ## When to test where
 - Pure Python logic (parsing, ranking, config): `make test`; add a unit test.
@@ -54,6 +58,10 @@ This project is indexed as `home-hadi-projects-chainproxy-win` (git-watch keeps 
 - Never claim Windows behaviour works without a VM run; say what was and was not run.
 
 ## Rules
+- NO personal name, GitHub account or repository address as plain text inside the shipped software (desktop files, Windows
+  window, installer metadata, APK strings, package id, signing certificate): filtering systems may key on them. The release
+  repository is kept base64-encoded (`REPO` in chain.py, `UpdateChecker.DEFAULT_REPO` in Kotlin); LICENSE says "Chain Proxy
+  contributors"; Android package is `app.chainproxy`, cert `CN=Chain Proxy`. Third-party credits (GeminiRoute, sing-box, radiance) stay.
 - Standard library only (the Windows bootstrap has no pip). tkinter is the only GUI toolkit.
 - `.bat`, `.cmd`, `.ps1`: ASCII only + CRLF (`make lint` checks; `.gitattributes` enforces).
   PowerShell must work on Windows PowerShell 5.1.

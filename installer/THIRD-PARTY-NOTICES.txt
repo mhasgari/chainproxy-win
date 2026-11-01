@@ -15,7 +15,7 @@ sing-box 1.14.4 (sing-box-1.14.4-windows-amd64.zip) - unmodified
 Lantern engine "chainlantern" (chainlantern-72fe1e9-windows-amd64.zip)
   Lantern's open-source client backend, https://github.com/getlantern/radiance at commit
   72fe1e906ee530a9784e9c1337b26d1a198fe73f, built headless with the `novpn` tag (local SOCKS5 inbound, no TUN) plus a
-  small launcher, dev/lantern/chainlantern/main.go in https://github.com/mhasgari/chainproxy-win.
+  small launcher, dev/lantern/chainlantern/main.go in the Chain Proxy source tree.
   License: GNU GPL v3 or later (radiance, sing-box-minimal, and the other Lantern libraries it links; the zip carries
   the LICENSE text and SOURCE.txt). Corresponding source: the two repositories above, plus the Go modules listed in
   radiance's go.mod / go.sum. Rebuild with `python3 dev/build_lantern.py` (see its docstring).

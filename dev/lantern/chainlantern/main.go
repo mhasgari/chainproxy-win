@@ -13,11 +13,16 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -30,13 +35,35 @@ func say(format string, a ...any) {
 	fmt.Printf("CHAINLANTERN "+format+"\n", a...)
 }
 
+// deviceID returns a stable random ID kept in the data directory. Radiance derives its own ID from
+// the machine on desktop; on Android there is no such source and the config server rejects requests
+// without one.
+func deviceID(dir string) string {
+	file := filepath.Join(dir, "device-id")
+	if b, err := os.ReadFile(file); err == nil && len(strings.TrimSpace(string(b))) >= 16 {
+		return strings.TrimSpace(string(b))
+	}
+	raw := make([]byte, 16)
+	rand.Read(raw)
+	id := hex.EncodeToString(raw)
+	os.WriteFile(file, []byte(id), 0o600)
+	return id
+}
+
 func main() {
 	dataPath := flag.String("data-path", "", "directory for Lantern's state (required)")
 	logPath := flag.String("log-path", "", "directory for Lantern's logs (default: data-path/log)")
 	logLevel := flag.String("log-level", "info", "trace, debug, info, warn, error")
 	listen := flag.String("listen", "127.0.0.1:18080", "SOCKS5/HTTP listen address (loopback only)")
 	tag := flag.String("tag", vpn.AutoSelectTag, "server tag, default: automatic best server")
+	dns := flag.String("dns", "", "host:port of a DNS server; needed on Android, where Go finds no resolv.conf and asks [::1]:53")
 	flag.Parse()
+	if *dns != "" {
+		server := *dns
+		net.DefaultResolver = &net.Resolver{PreferGo: true, Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
+			return (&net.Dialer{Timeout: 5 * time.Second}).DialContext(ctx, network, server)
+		}}
+	}
 	if *dataPath == "" {
 		say("ERROR --data-path is required")
 		os.Exit(2)
@@ -68,6 +95,7 @@ func main() {
 		LogDir:                   *logPath,
 		LogLevel:                 *logLevel,
 		PreserveTelemetryConsent: true,
+		DeviceID:                 deviceID(*dataPath),
 	})
 	if err != nil {
 		say("ERROR backend: %v", err)

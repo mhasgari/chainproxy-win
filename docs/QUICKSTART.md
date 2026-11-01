@@ -3,7 +3,7 @@
 یک صفحه برای شروع. جزئیات کامل در [راهنمای کاربر](USER-GUIDE.md).
 
 ## ۱. نصب (یک‌بار)
-**روش آسان: نصب‌کننده.** فایل `ChainProxy-Setup-<نسخه>.exe` را از صفحه‌ی [Releases](https://github.com/mhasgari/chainproxy-win/releases) بگیرید و اجرا کنید (بدون نیاز به ادمین؛ نصب در `%LOCALAPPDATA%\Programs\ChainProxy`). چون امضای دیجیتال ندارد، ویندوز ممکن است هشدار SmartScreen بدهد: «More info» ← «Run anyway». در پایان «Start Chain Proxy now» را بزنید و از مرحله‌ی ۳ ادامه دهید. اگر دانلود در شبکه‌ی شما مسدود است، نسخه‌ی **`ChainProxy-Setup-Full-<نسخه>.exe`** (حدود ۶۰ مگابایت) را بگیرید؛ Python و sing-box داخل آن است و هیچ دانلود دیگری لازم نیست. حذف: Settings ← Apps (پروکسی ویندوز خودکار برمی‌گردد).
+**روش آسان: نصب‌کننده.** فایل `ChainProxy-Setup-<نسخه>.exe` را از صفحهٔ Releases پروژه بگیرید و اجرا کنید (بدون نیاز به ادمین؛ نصب در `%LOCALAPPDATA%\Programs\ChainProxy`). چون امضای دیجیتال ندارد، ویندوز ممکن است هشدار SmartScreen بدهد: «More info» ← «Run anyway». در پایان «Start Chain Proxy now» را بزنید و از مرحله‌ی ۳ ادامه دهید. اگر دانلود در شبکه‌ی شما مسدود است، نسخه‌ی **`ChainProxy-Setup-Full-<نسخه>.exe`** (حدود ۶۰ مگابایت) را بگیرید؛ Python و sing-box داخل آن است و هیچ دانلود دیگری لازم نیست. حذف: Settings ← Apps (پروکسی ویندوز خودکار برمی‌گردد).
 
 **روش دستی (zip):**
 1. پوشه‌ی `chainproxy` را در یک جای ثابت بگذارید (مثلاً `C:\Tools\chainproxy`)، نه داخل زیپ یا Downloads.

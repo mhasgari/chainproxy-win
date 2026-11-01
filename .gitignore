@@ -31,3 +31,15 @@ __pycache__/
 # personal Claude Code settings
 /.claude/settings.local.json*
 /dev/cache/
+/dev/android/keys/
+/android/.gradle/
+/android/build/
+/android/app/build/
+/android/local.properties
+/dev/android/cache/
+/android/app/libs/
+/android/app/src/main/jniLibs/
+/android/.kotlin/
+/android/.idea/
+*.keystore
+*.jks

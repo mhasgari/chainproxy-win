@@ -15,7 +15,7 @@ Usage:
     python chain.py ensure          make sure a working sing-box is installed
     python chain.py install-core    (re)download sing-box.exe into ./core
 """
-__version__ = "1.3.1"
+__version__ = "1.3.2"
 
 import atexit
 import base64
@@ -40,6 +40,10 @@ import urllib.request as ur
 import zipfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+
+# Release repository (updates, Lantern engine download). Kept encoded so that no account or repository name
+# appears as plain text in the program, its window or its files.
+REPO = base64.b64decode("bWhhc2dhcmkvY2hhaW5wcm94eQ==").decode()
 
 BASE = Path(__file__).resolve().parent
 CFG_FILE = BASE / "config.json"
@@ -85,7 +89,7 @@ DEFAULTS = {
     "top_k_profiles": 3,             # nodes taken from the v2ray profile lists (profiles_first.txt / profiles_exit.txt)
     "auto_update": True,             # install new releases by itself (installer builds only)
     "update_check_hours": 6,
-    "update_repo": "mhasgari/chainproxy-win",
+    "update_repo": "",               # "" = the built-in release repository (REPO)
     "update_api": "",                # override of the releases/latest URL (tests)
     "update_first_check_seconds": 45,   # first update check after the window starts
     "close_to_tray": True,           # closing the window keeps the app in the notification area
@@ -744,8 +748,7 @@ def start_guard():
 # server by itself, and Chain Proxy uses its SOCKS port as the first hop of the chains.
 LANTERN_ENGINE = {
     "commit": "72fe1e9",
-    "url": "https://github.com/mhasgari/chainproxy-win/releases/download/engine-72fe1e9/"
-           "chainlantern-72fe1e9-windows-amd64.zip",
+    "url": f"https://github.com/{REPO}/releases/download/engine-72fe1e9/chainlantern-72fe1e9-windows-amd64.zip",
     "sha256": "f8b2e62f9b988b5c95f2757e1e809d5700da2ba8fc704135b4c91afcf1caca86",
 }
 ENGINE_DIR = BASE / "engine"
@@ -907,7 +910,7 @@ def installed_by_installer():
 
 def latest_release(cfg):
     """The newest published release as {version, url, sha256, size, page, notes}, or None."""
-    api = cfg["update_api"] or f"https://api.github.com/repos/{cfg['update_repo']}/releases/latest"
+    api = cfg["update_api"] or f"https://api.github.com/repos/{cfg['update_repo'] or REPO}/releases/latest"
     data = json.loads(http_get(api, timeout=20, tries=2, ua="chainproxy-updater")[0])
     tag = str(data.get("tag_name", ""))
     if not re.match(r"^v\d+\.\d+\.\d+$", tag):

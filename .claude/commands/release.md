@@ -11,3 +11,8 @@ Version: $ARGUMENTS (bump `__version__` in chain.py; if empty, ask).
    `gh release create vX.Y.Z` with ChainProxy-Setup-X.Y.Z.exe, ChainProxy-Setup-Full-X.Y.Z.exe,
    Chain-Proxy-X.Y.Z.zip and docs/Chain-Proxy-Quick-Start-fa.pdf (notes: changes, tested/not tested).
 Never include subs.txt. Leave the VM clean (`make vm-clean`) at the end.
+
+Android (separate tag `android-vX.Y.Z`, never "Latest", so the desktop updater ignores it): bump versionCode/versionName in
+android/app/build.gradle.kts, `python3 dev/android/gen_golden.py` if chain.py logic changed, `make android-test`,
+`make android-emu-test` (emulator running), `make android-apk` -> dist/ChainProxy-X.Y.Z-{arm64-v8a,armeabi-v7a,x86_64}.apk + .sha256,
+then `gh release create android-vX.Y.Z --latest=false` with all six files. The desktop release is created LAST with `--latest`.

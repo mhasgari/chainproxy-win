@@ -21,7 +21,7 @@ ACCENT, ACCENT_DK, ACCENT_LT = "#2563eb", "#1d4ed8", "#e6efff"
 OK, OK_LT, WARN, ERR = "#15803d", "#dcfce7", "#c2410c", "#b91c1c"
 LOG_BG, LOG_FG = "#0f172a", "#cbd5e1"
 FONT = "Segoe UI"
-APP_ID = "mhasgari.ChainProxy"
+APP_ID = "ChainProxy.App"
 
 MENU_SHOW, MENU_TOGGLE, MENU_NEXT, MENU_UPDATE, MENU_EXIT = 1, 2, 3, 4, 5
 
@@ -182,10 +182,10 @@ class GUI:
                   style="CardMuted.TLabel").pack(anchor="w")
         right = ttk.Frame(head, style="Card.TFrame")
         right.pack(side="right")
-        self.state_var = tk.StringVar(value="Disabled")
-        self.state_lbl = tk.Label(right, textvariable=self.state_var, font=(FONT, 10, "bold"), fg="white",
-                                  bg="#8a94a6", padx=14, pady=4)
-        self.state_lbl.pack(side="left", padx=(0, 12))
+        self.state_var = tk.StringVar(value="\u25cf  Disabled")
+        self.state_lbl = tk.Label(right, textvariable=self.state_var, font=(FONT, 11, "bold"), fg="#8a94a6",
+                                  bg=CARD, padx=2, pady=4)             # flat coloured text: must not look like a button
+        self.state_lbl.pack(side="left", padx=(0, 16))
         self.toggle_btn = ttk.Button(right, text="Enable", style="Accent.TButton", command=self.toggle)
         self.toggle_btn.pack(side="left")
 
@@ -235,11 +235,13 @@ class GUI:
 
         logbar = ttk.Frame(wrap)
         logbar.pack(fill="x")
-        ttk.Label(logbar, text="Log", style="Section.TLabel").pack(side="left")
-        ttk.Button(logbar, text="Clear", style="LinkBg.TButton", command=self.clear_log).pack(side="right")
-        ttk.Button(logbar, text="Copy", style="LinkBg.TButton", command=self.copy_log).pack(side="right")
-        gf = tk.Frame(wrap, bg=BORDER)
-        gf.pack(fill="both", expand=True, pady=(4, 0))
+        self.log_open = False
+        self.log_toggle = ttk.Button(logbar, text="\u25b8  Log", style="LinkBg.TButton", cursor="hand2", command=self.toggle_log)
+        self.log_toggle.pack(side="left")
+        self.log_tools = ttk.Frame(logbar)                  # Clear / Copy are only shown while the log is open
+        ttk.Button(self.log_tools, text="Clear", style="LinkBg.TButton", cursor="hand2", command=self.clear_log).pack(side="right")
+        ttk.Button(self.log_tools, text="Copy", style="LinkBg.TButton", cursor="hand2", command=self.copy_log).pack(side="right")
+        gf = self.log_frame = tk.Frame(wrap, bg=BORDER)
         gin = tk.Frame(gf, bg=LOG_BG)
         gin.pack(fill="both", expand=True, padx=1, pady=1)
         self.logbox = tk.Text(gin, height=8, state="disabled", wrap="word", font=("Consolas", 9), bg=LOG_BG,
@@ -328,6 +330,19 @@ class GUI:
         self.logbox.see("end")
         self.logbox.config(state="disabled")
 
+    def toggle_log(self):
+        """The log is collapsed by default; the header expands it."""
+        self.log_open = not self.log_open
+        if self.log_open:
+            self.log_toggle.config(text="\u25be  Log")
+            self.log_tools.pack(side="right")
+            self.log_frame.pack(fill="both", expand=True, pady=(4, 0))
+            self.logbox.see("end")
+        else:
+            self.log_toggle.config(text="\u25b8  Log")
+            self.log_tools.pack_forget()
+            self.log_frame.pack_forget()
+
     def clear_log(self):
         self.logbox.config(state="normal")
         self.logbox.delete("1.0", "end")
@@ -346,8 +361,8 @@ class GUI:
                                style="Stop.TButton" if active else "Accent.TButton")
 
     def set_state(self, text, color):
-        self.state_var.set(text)
-        self.state_lbl.config(bg=color)
+        self.state_var.set("\u25cf  " + text)
+        self.state_lbl.config(fg=color)
 
     def run_bg(self, fn, *args):
         if self.busy:
@@ -565,7 +580,7 @@ class GUI:
 
     def open_release_page(self):
         import webbrowser
-        webbrowser.open((self.update_info or {}).get("page") or "https://github.com/mhasgari/chainproxy-win/releases")
+        webbrowser.open((self.update_info or {}).get("page") or f"https://github.com/{chain.REPO}/releases")
 
     def install_update(self):
         info = self.update_info
@@ -685,7 +700,7 @@ class GUI:
         label(about, f"Chain Proxy {chain.__version__}", bold=True)
         label(about, "Chains two sources of proxies (client -> first hop -> exit hop -> internet) with sing-box, picks "
                      "the best route that passes verification and sets the Windows proxy.")
-        label(about, "MIT license.   https://github.com/mhasgari/chainproxy-win", muted=True)
+        label(about, "MIT license.", muted=True)
         label(about, "The Lantern engine is Lantern's open-source client backend "
                      "(https://github.com/getlantern/radiance, GPL-3.0) running as a separate program; "
                      f"build {chain.LANTERN_ENGINE['commit']}.", muted=True)

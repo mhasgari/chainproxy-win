@@ -248,7 +248,7 @@ idempotent است (`cleaned`)، `stop_evt` را set می‌کند، سرور ک�
 | `top_k_profiles` | `3` | تعداد نود از هر فهرست پروفایل v2ray. |
 | `auto_update` | `true` | نصب خودکار نسخه‌ی جدید (فقط نسخه‌ی نصب‌شده با نصب‌کننده). |
 | `update_check_hours` | `6` | فاصله‌ی بررسی نسخه‌ی جدید. |
-| `update_repo` | `"mhasgari/chainproxy-win"` | مخزن GitHub برای `releases/latest`. |
+| `update_repo` | `""` | `""` یعنی مخزن داخلی برنامه (ثابت `REPO` در `chain.py`، به‌صورت کدشده تا نام حساب/مخزن در متن برنامه نیاید). مقدار `owner/repo` آن را عوض می‌کند. |
 | `update_api` | `""` | جایگزین آدرس `releases/latest` (تست‌ها). |
 | `update_first_check_seconds` | `45` | تاخیر اولین بررسی پس از باز شدن پنجره. |
 | `close_to_tray` | `true` | بستن پنجره، برنامه را در tray نگه می‌دارد. |
@@ -404,7 +404,7 @@ Lantern برنامه‌ی Flutter + هسته‌ی Go است (GPL-3.0). هسته�
 
 ### ۱۵.۳ tray، آیکون، تک‌نمونه
 - `tray.py`: `Tray(icon, tip, on_command, get_menu, on_endsession)`. منو با `TrackPopupMenu(TPM_RETURNCMD)`؛ `on_command` فقط در صف GUI می‌گذارد. `WM_ENDSESSION` ← پروکسی بازگردانده می‌شود (Logoff/Shutdown). اگر tray نبود، بستن پنجره خروج است.
-- **آیکون:** در پنجره **فقط** `iconphoto(True, PNGها)`؛ استفاده‌ی هم‌زمان از `iconbitmap(default=ico)` روی Windows 11 / Tk 8.6.15 لوگوی Python را در taskbar و نوار عنوان می‌آورد (با اسکرین‌شات ثابت شد). `SetCurrentProcessExplicitAppUserModelID("mhasgari.ChainProxy")` و `AppUserModelID` میانبرهای Inno باعث می‌شود اعلان‌ها «Chain Proxy» بگویند نه «Python». `chainproxy.ico` قبلاً فقط یک PNG ۲۵۶ بود؛ اکنون ۱۰ اندازه (BMP برای ≤۱۲۸ و PNG برای ۲۵۶، `dev/make_icons.py`).
+- **آیکون:** در پنجره **فقط** `iconphoto(True, PNGها)`؛ استفاده‌ی هم‌زمان از `iconbitmap(default=ico)` روی Windows 11 / Tk 8.6.15 لوگوی Python را در taskbar و نوار عنوان می‌آورد (با اسکرین‌شات ثابت شد). `SetCurrentProcessExplicitAppUserModelID("ChainProxy.App")` و `AppUserModelID` میانبرهای Inno باعث می‌شود اعلان‌ها «Chain Proxy» بگویند نه «Python». `chainproxy.ico` قبلاً فقط یک PNG ۲۵۶ بود؛ اکنون ۱۰ اندازه (BMP برای ≤۱۲۸ و PNG برای ۲۵۶، `dev/make_icons.py`).
 - تک‌نمونه: `gui.single_instance(gui_port)`؛ نمونه‌ی دوم به اولی `show` می‌فرستد.
 
 ### ۱۵.۴ به‌روزرسانی خودکار

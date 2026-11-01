@@ -4,6 +4,8 @@ Build the Lantern engine for Chain Proxy: dist/engine/chainlantern-<commit>-wind
 
     python3 dev/build_lantern.py            Windows exe + zip + sha256 (what the app downloads)
     python3 dev/build_lantern.py --linux    also a Linux binary in dev/bin/ (local tests, needs a C compiler)
+    python3 dev/build_lantern.py --android  only: android/app/src/main/jniLibs/<abi>/libchainlantern.so for the
+                                            Android app (an executable named lib*.so, started by the app; needs the NDK)
 
 The engine is dev/lantern/chainlantern/main.go compiled INSIDE a checkout of github.com/getlantern/radiance
 (pinned commit below) with the `novpn` tag: Lantern's own client backend with free-plan servers and a local
@@ -61,8 +63,44 @@ def build(goos, cgo, out):
          "-o", str(out), "./cmd/chainlantern"], cwd=WORK, env=env)
 
 
+ANDROID_API = 26
+ANDROID_ABIS = {"arm64-v8a": ("arm64", "aarch64-linux-android"), "armeabi-v7a": ("arm", "armv7a-linux-androideabi"),
+                "x86_64": ("amd64", "x86_64-linux-android")}
+
+
+def build_android():
+    """Engine for the Android app: a Go executable stored as lib*.so (Android only extracts such names)."""
+    sdk = Path(os.environ.get("ANDROID_HOME", Path.home() / "Android" / "Sdk"))
+    ndks = sorted((sdk / "ndk").glob("*"))
+    if not ndks:
+        sys.exit(f"no NDK in {sdk}/ndk (run dev/android/setup-tools.sh)")
+    # sing-box's auto_detect_interface starts a netlink network monitor, which Android forbids to apps
+    # ("netlink socket in Android is banned by Google"); the engine only needs the default route.
+    opts = WORK / "vpn" / "boxoptions.go"
+    text = opts.read_text()
+    if "AutoDetectInterface: true," not in text:
+        sys.exit("radiance changed: AutoDetectInterface patch no longer applies")
+    opts.write_text(text.replace("AutoDetectInterface: true,", "AutoDetectInterface: false,"))
+    bin_dir = ndks[-1] / "toolchains" / "llvm" / "prebuilt" / "linux-x86_64" / "bin"
+    for abi, (goarch, triple) in ANDROID_ABIS.items():
+        out = ROOT / "android" / "app" / "src" / "main" / "jniLibs" / abi / "libchainlantern.so"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        env = dict(os.environ, GOTOOLCHAIN=toolchain(), GOOS="android", GOARCH=goarch, CGO_ENABLED="1",
+                   CC=str(bin_dir / f"{triple}{ANDROID_API}-clang"), CXX=str(bin_dir / f"{triple}{ANDROID_API}-clang++"),
+                   CGO_LDFLAGS="-static-libstdc++")      # no libc++_shared.so next to the executable
+        if goarch == "arm":
+            env["GOARM"] = "7"
+        run(["go", "build", "-tags", TAGS, "-trimpath", "-ldflags",
+             f"-s -w -checklinkname=0 -X github.com/getlantern/radiance/common.Commit={RADIANCE_COMMIT[:7]}",
+             "-o", str(out), "./cmd/chainlantern"], cwd=WORK, env=env)
+        print(f"built {out.relative_to(ROOT)} ({out.stat().st_size // 1024 // 1024} MiB)")
+
+
 def main():
     checkout()
+    if "--android" in sys.argv[1:]:
+        build_android()
+        return
     short = RADIANCE_COMMIT[:7]
     exe = ROOT / "dev" / "bin" / "chainlantern.exe"
     build("windows", False, exe)                        # no CGO needed on Windows: no C compiler required
@@ -70,7 +108,7 @@ def main():
     zpath = OUT / f"chainlantern-{short}-windows-amd64.zip"
     notes = (f"chainlantern {short} - Lantern client backend for Chain Proxy\n"
              f"Built from https://github.com/getlantern/radiance at commit {RADIANCE_COMMIT}\n"
-             f"plus dev/lantern/chainlantern/main.go of https://github.com/mhasgari/chainproxy-win\n"
+             f"plus dev/lantern/chainlantern/main.go of the Chain Proxy source tree\n"
              f"Build: go build -tags {TAGS} -trimpath (see dev/build_lantern.py)\n"
              "License: GNU GPL v3 or later (LICENSE). Corresponding source: the two repositories above.\n")
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:

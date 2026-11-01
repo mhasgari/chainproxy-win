@@ -1,0 +1,2986 @@
+{
+ "normalize": [
+  {
+   "in": "gemini.google.com",
+   "out": "https://gemini.google.com"
+  },
+  {
+   "in": "https://gemini.google.com",
+   "out": "https://gemini.google.com"
+  },
+  {
+   "in": "  http://a.b  ",
+   "out": "http://a.b"
+  },
+  {
+   "in": "",
+   "out": ""
+  },
+  {
+   "in": "   ",
+   "out": ""
+  },
+  {
+   "in": "ftp://x",
+   "out": "ftp://x"
+  },
+  {
+   "in": "a.b/c?d=1",
+   "out": "https://a.b/c?d=1"
+  }
+ ],
+ "parse": [
+  {
+   "link": "vmess://eyJ2IjogIjIiLCAicHMiOiAidm0iLCAiYWRkIjogInZtLmV4YW1wbGUuY29tIiwgInBvcnQiOiAiNDQzIiwgImlkIjogIjExMTExMTExLTIyMjItMzMzMy00NDQ0LTU1NTU1NTU1NTU1NSIsICJhaWQiOiAiMCIsICJuZXQiOiAidGNwIiwgInR5cGUiOiAibm9uZSIsICJob3N0IjogIiIsICJwYXRoIjogIiIsICJ0bHMiOiAiIn0=",
+   "expect": {
+    "name": "vm",
+    "ob": {
+     "type": "vmess",
+     "server": "vm.example.com",
+     "server_port": 443,
+     "uuid": "11111111-2222-3333-4444-555555555555",
+     "alter_id": 0,
+     "security": "auto"
+    }
+   }
+  },
+  {
+   "link": "vmess://eyJ2IjogIjIiLCAicHMiOiAidm0gd3MgdGxzIiwgImFkZCI6ICJ2bS5leGFtcGxlLmNvbSIsICJwb3J0IjogODQ0MywgImlkIjogIjExMTExMTExLTIyMjItMzMzMy00NDQ0LTU1NTU1NTU1NTU1NSIsICJhaWQiOiAyLCAibmV0IjogIndzIiwgInR5cGUiOiAibm9uZSIsICJob3N0IjogImNkbi5leGFtcGxlLmNvbSIsICJwYXRoIjogIi93cz9lZD0yMDQ4IiwgInRscyI6ICJ0bHMiLCAic25pIjogInNuaS5leGFtcGxlLmNvbSIsICJhbHBuIjogImgyLGh0dHAvMS4xIiwgImZwIjogImNocm9tZSIsICJzY3kiOiAiYWVzLTEyOC1nY20ifQ==",
+   "expect": {
+    "name": "vm ws tls",
+    "ob": {
+     "type": "vmess",
+     "server": "vm.example.com",
+     "server_port": 8443,
+     "uuid": "11111111-2222-3333-4444-555555555555",
+     "alter_id": 2,
+     "security": "aes-128-gcm",
+     "tls": {
+      "enabled": true,
+      "server_name": "sni.example.com",
+      "alpn": [
+       "h2",
+       "http/1.1"
+      ],
+      "utls": {
+       "enabled": true,
+       "fingerprint": "chrome"
+      }
+     },
+     "transport": {
+      "type": "ws",
+      "max_early_data": 2048,
+      "early_data_header_name": "Sec-WebSocket-Protocol",
+      "path": "/ws",
+      "headers": {
+       "Host": "cdn.example.com"
+      }
+     }
+    }
+   }
+  },
+  {
+   "link": "vmess://eyJ2IjogIjIiLCAicHMiOiAidm0gZ3JwYyIsICJhZGQiOiAidm0uZXhhbXBsZS5jb20iLCAicG9ydCI6ICI0NDMiLCAiaWQiOiAiMTExMTExMTEtMjIyMi0zMzMzLTQ0NDQtNTU1NTU1NTU1NTU1IiwgImFpZCI6ICIwIiwgIm5ldCI6ICJncnBjIiwgInR5cGUiOiAibm9uZSIsICJob3N0IjogIiIsICJwYXRoIjogInN2YyIsICJ0bHMiOiAidGxzIn0=",
+   "expect": {
+    "name": "vm grpc",
+    "ob": {
+     "type": "vmess",
+     "server": "vm.example.com",
+     "server_port": 443,
+     "uuid": "11111111-2222-3333-4444-555555555555",
+     "alter_id": 0,
+     "security": "auto",
+     "tls": {
+      "enabled": true,
+      "server_name": "vm.example.com"
+     },
+     "transport": {
+      "type": "grpc",
+      "service_name": "svc"
+     }
+    }
+   }
+  },
+  {
+   "link": "vmess://eyJ2IjogIjIiLCAicHMiOiAidm0gaDIiLCAiYWRkIjogInZtLmV4YW1wbGUuY29tIiwgInBvcnQiOiAiNDQzIiwgImlkIjogIjExMTExMTExLTIyMjItMzMzMy00NDQ0LTU1NTU1NTU1NTU1NSIsICJhaWQiOiAiMCIsICJuZXQiOiAiaDIiLCAidHlwZSI6ICJub25lIiwgImhvc3QiOiAiYS5leGFtcGxlLmNvbSxiLmV4YW1wbGUuY29tIiwgInBhdGgiOiAiL2gyIiwgInRscyI6ICJ0bHMifQ==",
+   "expect": {
+    "name": "vm h2",
+    "ob": {
+     "type": "vmess",
+     "server": "vm.example.com",
+     "server_port": 443,
+     "uuid": "11111111-2222-3333-4444-555555555555",
+     "alter_id": 0,
+     "security": "auto",
+     "tls": {
+      "enabled": true,
+      "server_name": "a.example.com,b.example.com"
+     },
+     "transport": {
+      "type": "http",
+      "path": "/h2",
+      "host": [
+       "a.example.com",
+       "b.example.com"
+      ]
+     }
+    }
+   }
+  },
+  {
+   "link": "vmess://eyJ2IjogIjIiLCAicHMiOiAidm0gaHR0cHVwZ3JhZGUiLCAiYWRkIjogInZtLmV4YW1wbGUuY29tIiwgInBvcnQiOiAiNDQzIiwgImlkIjogIjExMTExMTExLTIyMjItMzMzMy00NDQ0LTU1NTU1NTU1NTU1NSIsICJhaWQiOiAiMCIsICJuZXQiOiAiaHR0cHVwZ3JhZGUiLCAidHlwZSI6ICJub25lIiwgImhvc3QiOiAiaC5leGFtcGxlLmNvbSIsICJwYXRoIjogIi91cCIsICJ0bHMiOiAiIn0=",
+   "expect": {
+    "name": "vm httpupgrade",
+    "ob": {
+     "type": "vmess",
+     "server": "vm.example.com",
+     "server_port": 443,
+     "uuid": "11111111-2222-3333-4444-555555555555",
+     "alter_id": 0,
+     "security": "auto",
+     "transport": {
+      "type": "httpupgrade",
+      "path": "/up",
+      "host": "h.example.com"
+     }
+    }
+   }
+  },
+  {
+   "link": "vmess://eyJ2IjogIjIiLCAicHMiOiAiIiwgImFkZCI6ICJub25hbWUuZXhhbXBsZS5jb20iLCAicG9ydCI6ICI0NDMiLCAiaWQiOiAiMTExMTExMTEtMjIyMi0zMzMzLTQ0NDQtNTU1NTU1NTU1NTU1IiwgImFpZCI6ICIwIiwgIm5ldCI6ICJ0Y3AiLCAidHlwZSI6ICJub25lIiwgImhvc3QiOiAiIiwgInBhdGgiOiAiIiwgInRscyI6ICIifQ==",
+   "expect": {
+    "name": "",
+    "ob": {
+     "type": "vmess",
+     "server": "noname.example.com",
+     "server_port": 443,
+     "uuid": "11111111-2222-3333-4444-555555555555",
+     "alter_id": 0,
+     "security": "auto"
+    }
+   }
+  },
+  {
+   "link": "vmess://bm90IGpzb24=",
+   "expect": null
+  },
+  {
+   "link": "vmess://###",
+   "expect": null
+  },
+  {
+   "link": "vless://aaaa-bbbb@v.example.com:443?encryption=none&security=reality&sni=www.microsoft.com&fp=chrome&pbk=PUBKEY&sid=ab12&type=tcp&flow=xtls-rprx-vision#Reality%20Node",
+   "expect": {
+    "name": "Reality Node",
+    "ob": {
+     "type": "vless",
+     "server": "v.example.com",
+     "server_port": 443,
+     "uuid": "aaaa-bbbb",
+     "packet_encoding": "xudp",
+     "flow": "xtls-rprx-vision",
+     "tls": {
+      "enabled": true,
+      "server_name": "www.microsoft.com",
+      "utls": {
+       "enabled": true,
+       "fingerprint": "chrome"
+      },
+      "reality": {
+       "enabled": true,
+       "public_key": "PUBKEY",
+       "short_id": "ab12"
+      }
+     }
+    }
+   }
+  },
+  {
+   "link": "vless://uuid-1@V.Example.COM:2053?security=tls&type=ws&host=ws.example.com&path=%2Fpath%3Fed%3D2560&sni=s.example.com&alpn=h2%2Chttp%2F1.1&allowInsecure=1#WS+TLS",
+   "expect": {
+    "name": "WS+TLS",
+    "ob": {
+     "type": "vless",
+     "server": "v.example.com",
+     "server_port": 2053,
+     "uuid": "uuid-1",
+     "packet_encoding": "xudp",
+     "tls": {
+      "enabled": true,
+      "server_name": "s.example.com",
+      "insecure": true,
+      "alpn": [
+       "h2",
+       "http/1.1"
+      ]
+     },
+     "transport": {
+      "type": "ws",
+      "max_early_data": 2560,
+      "early_data_header_name": "Sec-WebSocket-Protocol",
+      "path": "/path",
+      "headers": {
+       "Host": "ws.example.com"
+      }
+     }
+    }
+   }
+  },
+  {
+   "link": "vless://uuid-2@[2001:db8::1]:443?security=tls&type=grpc&serviceName=grpcsvc&fp=firefox#v6",
+   "expect": {
+    "name": "v6",
+    "ob": {
+     "type": "vless",
+     "server": "2001:db8::1",
+     "server_port": 443,
+     "uuid": "uuid-2",
+     "packet_encoding": "xudp",
+     "tls": {
+      "enabled": true,
+      "server_name": "2001:db8::1",
+      "utls": {
+       "enabled": true,
+       "fingerprint": "firefox"
+      }
+     },
+     "transport": {
+      "type": "grpc",
+      "service_name": "grpcsvc"
+     }
+    }
+   }
+  },
+  {
+   "link": "vless://uuid-3@plain.example.com:80?type=httpupgrade&host=hu.example.com&path=%2Fhu#plain",
+   "expect": {
+    "name": "plain",
+    "ob": {
+     "type": "vless",
+     "server": "plain.example.com",
+     "server_port": 80,
+     "uuid": "uuid-3",
+     "packet_encoding": "xudp",
+     "transport": {
+      "type": "httpupgrade",
+      "path": "/hu",
+      "host": "hu.example.com"
+     }
+    }
+   }
+  },
+  {
+   "link": "vless://uuid-4@h2.example.com:443?security=tls&type=h2&host=a.com,b.com&path=/x&peer=peer.example.com#h2",
+   "expect": {
+    "name": "h2",
+    "ob": {
+     "type": "vless",
+     "server": "h2.example.com",
+     "server_port": 443,
+     "uuid": "uuid-4",
+     "packet_encoding": "xudp",
+     "tls": {
+      "enabled": true,
+      "server_name": "peer.example.com"
+     },
+     "transport": {
+      "type": "http",
+      "path": "/x",
+      "host": [
+       "a.com",
+       "b.com"
+      ]
+     }
+    }
+   }
+  },
+  {
+   "link": "vless://uuid-5@host.example.com:443?security=tls&sni=&fp=#%F0%9F%87%A9%F0%9F%87%AA%20Germany",
+   "expect": {
+    "name": "🇩🇪 Germany",
+    "ob": {
+     "type": "vless",
+     "server": "host.example.com",
+     "server_port": 443,
+     "uuid": "uuid-5",
+     "packet_encoding": "xudp",
+     "tls": {
+      "enabled": true,
+      "server_name": "host.example.com"
+     }
+    }
+   }
+  },
+  {
+   "link": "vless://uuid-6@noport.example.com?security=tls",
+   "expect": {
+    "name": "noport.example.com",
+    "ob": {
+     "type": "vless",
+     "server": "noport.example.com",
+     "server_port": null,
+     "uuid": "uuid-6",
+     "packet_encoding": "xudp",
+     "tls": {
+      "enabled": true,
+      "server_name": "noport.example.com"
+     }
+    }
+   }
+  },
+  {
+   "link": "trojan://pass%40word@t.example.com:443?sni=t.example.com&type=ws&path=/t&host=t.example.com#Trojan",
+   "expect": {
+    "name": "Trojan",
+    "ob": {
+     "type": "trojan",
+     "server": "t.example.com",
+     "server_port": 443,
+     "password": "pass@word",
+     "tls": {
+      "enabled": true,
+      "server_name": "t.example.com"
+     },
+     "transport": {
+      "type": "ws",
+      "path": "/t",
+      "headers": {
+       "Host": "t.example.com"
+      }
+     }
+    }
+   }
+  },
+  {
+   "link": "trojan://secret@t2.example.com:8443?allowInsecure=true&alpn=h2#T2",
+   "expect": {
+    "name": "T2",
+    "ob": {
+     "type": "trojan",
+     "server": "t2.example.com",
+     "server_port": 8443,
+     "password": "secret",
+     "tls": {
+      "enabled": true,
+      "server_name": "t2.example.com",
+      "insecure": true,
+      "alpn": [
+       "h2"
+      ]
+     }
+    }
+   }
+  },
+  {
+   "link": "trojan://secret@t3.example.com:443?security=none#forced-tls",
+   "expect": {
+    "name": "forced-tls",
+    "ob": {
+     "type": "trojan",
+     "server": "t3.example.com",
+     "server_port": 443,
+     "password": "secret",
+     "tls": {
+      "enabled": true,
+      "server_name": "t3.example.com"
+     }
+    }
+   }
+  },
+  {
+   "link": "ss://YWVzLTI1Ni1nY206cHcxMjM@ss.example.com:8388#SS%20Node",
+   "expect": {
+    "name": "SS Node",
+    "ob": {
+     "type": "shadowsocks",
+     "server": "ss.example.com",
+     "server_port": 8388,
+     "method": "aes-256-gcm",
+     "password": "pw123"
+    }
+   }
+  },
+  {
+   "link": "ss://aes-128-gcm:plainpw@ss2.example.com:443#plain",
+   "expect": {
+    "name": "plain",
+    "ob": {
+     "type": "shadowsocks",
+     "server": "ss2.example.com",
+     "server_port": 443,
+     "method": "aes-128-gcm",
+     "password": "plainpw"
+    }
+   }
+  },
+  {
+   "link": "ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwd0BzczMuZXhhbXBsZS5jb206OTk5OQ#whole",
+   "expect": {
+    "name": "whole",
+    "ob": {
+     "type": "shadowsocks",
+     "server": "ss3.example.com",
+     "server_port": 9999,
+     "method": "chacha20-ietf-poly1305",
+     "password": "pw"
+    }
+   }
+  },
+  {
+   "link": "ss://YWVzLTI1Ni1nY206cHc=@[2001:db8::2]:8388/#v6ss",
+   "expect": {
+    "name": "v6ss",
+    "ob": {
+     "type": "shadowsocks",
+     "server": "2001:db8::2",
+     "server_port": 8388,
+     "method": "aes-256-gcm",
+     "password": "pw"
+    }
+   }
+  },
+  {
+   "link": "ss://YWVzLTI1Ni1nY206cHc=@plug.example.com:8388/?plugin=obfs-local%3Bobfs%3Dhttp#plugin",
+   "expect": null
+  },
+  {
+   "link": "hysteria2://hy2pass@hy.example.com:8443?sni=hy.example.com&insecure=1&obfs=salamander&obfs-password=ob#HY2",
+   "expect": {
+    "name": "HY2",
+    "ob": {
+     "type": "hysteria2",
+     "server": "hy.example.com",
+     "server_port": 8443,
+     "password": "hy2pass",
+     "tls": {
+      "enabled": true,
+      "server_name": "hy.example.com",
+      "insecure": true
+     },
+     "obfs": {
+      "type": "salamander",
+      "password": "ob"
+     }
+    }
+   }
+  },
+  {
+   "link": "hy2://user:pass@hy2.example.com?sni=custom.example.com#hy2 userpass",
+   "expect": {
+    "name": "hy2 userpass",
+    "ob": {
+     "type": "hysteria2",
+     "server": "hy2.example.com",
+     "server_port": 443,
+     "password": "user:pass",
+     "tls": {
+      "enabled": true,
+      "server_name": "custom.example.com"
+     }
+    }
+   }
+  },
+  {
+   "link": "hysteria2://nopass.example.com#bare",
+   "expect": {
+    "name": "bare",
+    "ob": {
+     "type": "hysteria2",
+     "server": "nopass.example.com",
+     "server_port": 443,
+     "password": "",
+     "tls": {
+      "enabled": true,
+      "server_name": "nopass.example.com"
+     }
+    }
+   }
+  },
+  {
+   "link": "http://example.com/not-a-node",
+   "expect": null
+  },
+  {
+   "link": "",
+   "expect": null
+  },
+  {
+   "link": "garbage",
+   "expect": null
+  },
+  {
+   "link": "vless://",
+   "expect": null
+  }
+ ],
+ "subscription": [
+  {
+   "label": "plain",
+   "body": "vmess://eyJ2IjogIjIiLCAicHMiOiAib25lIiwgImFkZCI6ICJ2bS5leGFtcGxlLmNvbSIsICJwb3J0IjogIjQ0MyIsICJpZCI6ICIxMTExMTExMS0yMjIyLTMzMzMtNDQ0NC01NTU1NTU1NTU1NTUiLCAiYWlkIjogIjAiLCAibmV0IjogInRjcCIsICJ0eXBlIjogIm5vbmUiLCAiaG9zdCI6ICIiLCAicGF0aCI6ICIiLCAidGxzIjogIiJ9\nvless://u@dup.example.com:443?security=tls#first\nvless://u@dup.example.com:443?security=tls#second\nbad line\ntrojan://p@t.example.com:443#t\nss://aes-128-gcm:p@s.example.com:1#s",
+   "expect": [
+    {
+     "name": "one",
+     "ob": {
+      "type": "vmess",
+      "server": "vm.example.com",
+      "server_port": 443,
+      "uuid": "11111111-2222-3333-4444-555555555555",
+      "alter_id": 0,
+      "security": "auto"
+     }
+    },
+    {
+     "name": "first",
+     "ob": {
+      "type": "vless",
+      "server": "dup.example.com",
+      "server_port": 443,
+      "uuid": "u",
+      "packet_encoding": "xudp",
+      "tls": {
+       "enabled": true,
+       "server_name": "dup.example.com"
+      }
+     }
+    },
+    {
+     "name": "t",
+     "ob": {
+      "type": "trojan",
+      "server": "t.example.com",
+      "server_port": 443,
+      "password": "p",
+      "tls": {
+       "enabled": true,
+       "server_name": "t.example.com"
+      }
+     }
+    },
+    {
+     "name": "s",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "s.example.com",
+      "server_port": 1,
+      "method": "aes-128-gcm",
+      "password": "p"
+     }
+    }
+   ]
+  },
+  {
+   "label": "base64",
+   "body": "dm1lc3M6Ly9leUoySWpvZ0lqSWlMQ0FpY0hNaU9pQWliMjVsSWl3Z0ltRmtaQ0k2SUNKMmJTNWxlR0Z0Y0d4bExtTnZiU0lzSUNKd2IzSjBJam9nSWpRME15SXNJQ0pwWkNJNklDSXhNVEV4TVRFeE1TMHlNakl5TFRNek16TXRORFEwTkMwMU5UVTFOVFUxTlRVMU5UVWlMQ0FpWVdsa0lqb2dJakFpTENBaWJtVjBJam9nSW5SamNDSXNJQ0owZVhCbElqb2dJbTV2Ym1VaUxDQWlhRzl6ZENJNklDSWlMQ0FpY0dGMGFDSTZJQ0lpTENBaWRHeHpJam9nSWlKOQp2bGVzczovL3VAZHVwLmV4YW1wbGUuY29tOjQ0Mz9zZWN1cml0eT10bHMjZmlyc3QKdmxlc3M6Ly91QGR1cC5leGFtcGxlLmNvbTo0NDM/c2VjdXJpdHk9dGxzI3NlY29uZApiYWQgbGluZQp0cm9qYW46Ly9wQHQuZXhhbXBsZS5jb206NDQzI3QKc3M6Ly9hZXMtMTI4LWdjbTpwQHMuZXhhbXBsZS5jb206MSNz",
+   "expect": [
+    {
+     "name": "one",
+     "ob": {
+      "type": "vmess",
+      "server": "vm.example.com",
+      "server_port": 443,
+      "uuid": "11111111-2222-3333-4444-555555555555",
+      "alter_id": 0,
+      "security": "auto"
+     }
+    },
+    {
+     "name": "first",
+     "ob": {
+      "type": "vless",
+      "server": "dup.example.com",
+      "server_port": 443,
+      "uuid": "u",
+      "packet_encoding": "xudp",
+      "tls": {
+       "enabled": true,
+       "server_name": "dup.example.com"
+      }
+     }
+    },
+    {
+     "name": "t",
+     "ob": {
+      "type": "trojan",
+      "server": "t.example.com",
+      "server_port": 443,
+      "password": "p",
+      "tls": {
+       "enabled": true,
+       "server_name": "t.example.com"
+      }
+     }
+    },
+    {
+     "name": "s",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "s.example.com",
+      "server_port": 1,
+      "method": "aes-128-gcm",
+      "password": "p"
+     }
+    }
+   ]
+  },
+  {
+   "label": "base64-urlsafe-nopad",
+   "body": "dm1lc3M6Ly9leUoySWpvZ0lqSWlMQ0FpY0hNaU9pQWliMjVsSWl3Z0ltRmtaQ0k2SUNKMmJTNWxlR0Z0Y0d4bExtTnZiU0lzSUNKd2IzSjBJam9nSWpRME15SXNJQ0pwWkNJNklDSXhNVEV4TVRFeE1TMHlNakl5TFRNek16TXRORFEwTkMwMU5UVTFOVFUxTlRVMU5UVWlMQ0FpWVdsa0lqb2dJakFpTENBaWJtVjBJam9nSW5SamNDSXNJQ0owZVhCbElqb2dJbTV2Ym1VaUxDQWlhRzl6ZENJNklDSWlMQ0FpY0dGMGFDSTZJQ0lpTENBaWRHeHpJam9nSWlKOQp2bGVzczovL3VAZHVwLmV4YW1wbGUuY29tOjQ0Mz9zZWN1cml0eT10bHMjZmlyc3QKdmxlc3M6Ly91QGR1cC5leGFtcGxlLmNvbTo0NDM_c2VjdXJpdHk9dGxzI3NlY29uZApiYWQgbGluZQp0cm9qYW46Ly9wQHQuZXhhbXBsZS5jb206NDQzI3QKc3M6Ly9hZXMtMTI4LWdjbTpwQHMuZXhhbXBsZS5jb206MSNz",
+   "expect": [
+    {
+     "name": "one",
+     "ob": {
+      "type": "vmess",
+      "server": "vm.example.com",
+      "server_port": 443,
+      "uuid": "11111111-2222-3333-4444-555555555555",
+      "alter_id": 0,
+      "security": "auto"
+     }
+    },
+    {
+     "name": "first",
+     "ob": {
+      "type": "vless",
+      "server": "dup.example.com",
+      "server_port": 443,
+      "uuid": "u",
+      "packet_encoding": "xudp",
+      "tls": {
+       "enabled": true,
+       "server_name": "dup.example.com"
+      }
+     }
+    },
+    {
+     "name": "t",
+     "ob": {
+      "type": "trojan",
+      "server": "t.example.com",
+      "server_port": 443,
+      "password": "p",
+      "tls": {
+       "enabled": true,
+       "server_name": "t.example.com"
+      }
+     }
+    },
+    {
+     "name": "s",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "s.example.com",
+      "server_port": 1,
+      "method": "aes-128-gcm",
+      "password": "p"
+     }
+    }
+   ]
+  },
+  {
+   "label": "empty",
+   "body": "",
+   "expect": []
+  },
+  {
+   "label": "junk",
+   "body": "!!!not base64 and no links",
+   "expect": []
+  }
+ ],
+ "config": [
+  {
+   "label": "defaults/modern=True",
+   "cfg": {
+    "mixed_port": 42815,
+    "api_port": 42816,
+    "private_direct": true,
+    "direct_suffixes": [
+     ".ir"
+    ],
+    "log_level": "warn"
+   },
+   "modern": true,
+   "A": {
+    "A1": {
+     "name": "first",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "a1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-A1"
+     }
+    },
+    "A2": {
+     "name": "second",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "a2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-A2"
+     }
+    },
+    "A0": {
+     "name": "Lantern",
+     "ob": {
+      "type": "socks",
+      "server": "127.0.0.1",
+      "server_port": 42819,
+      "version": "5"
+     }
+    }
+   },
+   "B": {
+    "B1": {
+     "name": "exit1",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1"
+     }
+    },
+    "B2": {
+     "name": "exit2",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2"
+     }
+    }
+   },
+   "expect": {
+    "log": {
+     "level": "warn",
+     "timestamp": true
+    },
+    "inbounds": [
+     {
+      "type": "mixed",
+      "tag": "in",
+      "listen": "127.0.0.1",
+      "listen_port": 42815
+     }
+    ],
+    "outbounds": [
+     {
+      "type": "direct",
+      "tag": "direct"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "a1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-A1",
+      "tag": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "a2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-A2",
+      "tag": "A2"
+     },
+     {
+      "type": "socks",
+      "server": "127.0.0.1",
+      "server_port": 42819,
+      "version": "5",
+      "tag": "A0"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "B1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "B2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A1-B1",
+      "detour": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A1-B2",
+      "detour": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A2-B1",
+      "detour": "A2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A2-B2",
+      "detour": "A2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A0-B1",
+      "detour": "A0"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A0-B2",
+      "detour": "A0"
+     },
+     {
+      "type": "selector",
+      "tag": "route",
+      "outbounds": [
+       "A1-B1",
+       "A1-B2",
+       "A2-B1",
+       "A2-B2",
+       "A0-B1",
+       "A0-B2",
+       "B1",
+       "B2",
+       "A1",
+       "A2",
+       "A0"
+      ],
+      "default": "A1-B1"
+     }
+    ],
+    "route": {
+     "rules": [
+      {
+       "domain_suffix": [
+        ".ir"
+       ],
+       "outbound": "direct"
+      },
+      {
+       "ip_is_private": true,
+       "outbound": "direct"
+      }
+     ],
+     "final": "route",
+     "default_domain_resolver": "local"
+    },
+    "experimental": {
+     "clash_api": {
+      "external_controller": "127.0.0.1:42816"
+     }
+    },
+    "dns": {
+     "servers": [
+      {
+       "type": "local",
+       "tag": "local"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "label": "defaults/modern=False",
+   "cfg": {
+    "mixed_port": 42815,
+    "api_port": 42816,
+    "private_direct": true,
+    "direct_suffixes": [
+     ".ir"
+    ],
+    "log_level": "warn"
+   },
+   "modern": false,
+   "A": {
+    "A1": {
+     "name": "first",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "a1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-A1"
+     }
+    },
+    "A2": {
+     "name": "second",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "a2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-A2"
+     }
+    },
+    "A0": {
+     "name": "Lantern",
+     "ob": {
+      "type": "socks",
+      "server": "127.0.0.1",
+      "server_port": 42819,
+      "version": "5"
+     }
+    }
+   },
+   "B": {
+    "B1": {
+     "name": "exit1",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1"
+     }
+    },
+    "B2": {
+     "name": "exit2",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2"
+     }
+    }
+   },
+   "expect": {
+    "log": {
+     "level": "warn",
+     "timestamp": true
+    },
+    "inbounds": [
+     {
+      "type": "mixed",
+      "tag": "in",
+      "listen": "127.0.0.1",
+      "listen_port": 42815
+     }
+    ],
+    "outbounds": [
+     {
+      "type": "direct",
+      "tag": "direct"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "a1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-A1",
+      "tag": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "a2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-A2",
+      "tag": "A2"
+     },
+     {
+      "type": "socks",
+      "server": "127.0.0.1",
+      "server_port": 42819,
+      "version": "5",
+      "tag": "A0"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "B1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "B2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A1-B1",
+      "detour": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A1-B2",
+      "detour": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A2-B1",
+      "detour": "A2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A2-B2",
+      "detour": "A2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A0-B1",
+      "detour": "A0"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A0-B2",
+      "detour": "A0"
+     },
+     {
+      "type": "selector",
+      "tag": "route",
+      "outbounds": [
+       "A1-B1",
+       "A1-B2",
+       "A2-B1",
+       "A2-B2",
+       "A0-B1",
+       "A0-B2",
+       "B1",
+       "B2",
+       "A1",
+       "A2",
+       "A0"
+      ],
+      "default": "A1-B1"
+     }
+    ],
+    "route": {
+     "rules": [
+      {
+       "domain_suffix": [
+        ".ir"
+       ],
+       "outbound": "direct"
+      },
+      {
+       "ip_is_private": true,
+       "outbound": "direct"
+      }
+     ],
+     "final": "route"
+    },
+    "experimental": {
+     "clash_api": {
+      "external_controller": "127.0.0.1:42816"
+     }
+    }
+   }
+  },
+  {
+   "label": "no-private/modern=True",
+   "cfg": {
+    "mixed_port": 42815,
+    "api_port": 42816,
+    "private_direct": false,
+    "direct_suffixes": [
+     ".ir"
+    ],
+    "log_level": "warn"
+   },
+   "modern": true,
+   "A": {
+    "A1": {
+     "name": "first",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "a1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-A1"
+     }
+    },
+    "A2": {
+     "name": "second",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "a2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-A2"
+     }
+    },
+    "A0": {
+     "name": "Lantern",
+     "ob": {
+      "type": "socks",
+      "server": "127.0.0.1",
+      "server_port": 42819,
+      "version": "5"
+     }
+    }
+   },
+   "B": {
+    "B1": {
+     "name": "exit1",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1"
+     }
+    },
+    "B2": {
+     "name": "exit2",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2"
+     }
+    }
+   },
+   "expect": {
+    "log": {
+     "level": "warn",
+     "timestamp": true
+    },
+    "inbounds": [
+     {
+      "type": "mixed",
+      "tag": "in",
+      "listen": "127.0.0.1",
+      "listen_port": 42815
+     }
+    ],
+    "outbounds": [
+     {
+      "type": "direct",
+      "tag": "direct"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "a1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-A1",
+      "tag": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "a2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-A2",
+      "tag": "A2"
+     },
+     {
+      "type": "socks",
+      "server": "127.0.0.1",
+      "server_port": 42819,
+      "version": "5",
+      "tag": "A0"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "B1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "B2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A1-B1",
+      "detour": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A1-B2",
+      "detour": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A2-B1",
+      "detour": "A2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A2-B2",
+      "detour": "A2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A0-B1",
+      "detour": "A0"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A0-B2",
+      "detour": "A0"
+     },
+     {
+      "type": "selector",
+      "tag": "route",
+      "outbounds": [
+       "A1-B1",
+       "A1-B2",
+       "A2-B1",
+       "A2-B2",
+       "A0-B1",
+       "A0-B2",
+       "B1",
+       "B2",
+       "A1",
+       "A2",
+       "A0"
+      ],
+      "default": "A1-B1"
+     }
+    ],
+    "route": {
+     "rules": [
+      {
+       "domain_suffix": [
+        ".ir"
+       ],
+       "outbound": "direct"
+      }
+     ],
+     "final": "route",
+     "default_domain_resolver": "local"
+    },
+    "experimental": {
+     "clash_api": {
+      "external_controller": "127.0.0.1:42816"
+     }
+    },
+    "dns": {
+     "servers": [
+      {
+       "type": "local",
+       "tag": "local"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "label": "no-private/modern=False",
+   "cfg": {
+    "mixed_port": 42815,
+    "api_port": 42816,
+    "private_direct": false,
+    "direct_suffixes": [
+     ".ir"
+    ],
+    "log_level": "warn"
+   },
+   "modern": false,
+   "A": {
+    "A1": {
+     "name": "first",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "a1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-A1"
+     }
+    },
+    "A2": {
+     "name": "second",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "a2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-A2"
+     }
+    },
+    "A0": {
+     "name": "Lantern",
+     "ob": {
+      "type": "socks",
+      "server": "127.0.0.1",
+      "server_port": 42819,
+      "version": "5"
+     }
+    }
+   },
+   "B": {
+    "B1": {
+     "name": "exit1",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1"
+     }
+    },
+    "B2": {
+     "name": "exit2",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2"
+     }
+    }
+   },
+   "expect": {
+    "log": {
+     "level": "warn",
+     "timestamp": true
+    },
+    "inbounds": [
+     {
+      "type": "mixed",
+      "tag": "in",
+      "listen": "127.0.0.1",
+      "listen_port": 42815
+     }
+    ],
+    "outbounds": [
+     {
+      "type": "direct",
+      "tag": "direct"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "a1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-A1",
+      "tag": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "a2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-A2",
+      "tag": "A2"
+     },
+     {
+      "type": "socks",
+      "server": "127.0.0.1",
+      "server_port": 42819,
+      "version": "5",
+      "tag": "A0"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "B1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "B2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A1-B1",
+      "detour": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A1-B2",
+      "detour": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A2-B1",
+      "detour": "A2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A2-B2",
+      "detour": "A2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A0-B1",
+      "detour": "A0"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A0-B2",
+      "detour": "A0"
+     },
+     {
+      "type": "selector",
+      "tag": "route",
+      "outbounds": [
+       "A1-B1",
+       "A1-B2",
+       "A2-B1",
+       "A2-B2",
+       "A0-B1",
+       "A0-B2",
+       "B1",
+       "B2",
+       "A1",
+       "A2",
+       "A0"
+      ],
+      "default": "A1-B1"
+     }
+    ],
+    "route": {
+     "rules": [
+      {
+       "domain_suffix": [
+        ".ir"
+       ],
+       "outbound": "direct"
+      }
+     ],
+     "final": "route"
+    },
+    "experimental": {
+     "clash_api": {
+      "external_controller": "127.0.0.1:42816"
+     }
+    }
+   }
+  },
+  {
+   "label": "no-suffix/modern=True",
+   "cfg": {
+    "mixed_port": 42815,
+    "api_port": 42816,
+    "private_direct": true,
+    "direct_suffixes": [],
+    "log_level": "warn"
+   },
+   "modern": true,
+   "A": {
+    "A1": {
+     "name": "first",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "a1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-A1"
+     }
+    },
+    "A2": {
+     "name": "second",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "a2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-A2"
+     }
+    },
+    "A0": {
+     "name": "Lantern",
+     "ob": {
+      "type": "socks",
+      "server": "127.0.0.1",
+      "server_port": 42819,
+      "version": "5"
+     }
+    }
+   },
+   "B": {
+    "B1": {
+     "name": "exit1",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1"
+     }
+    },
+    "B2": {
+     "name": "exit2",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2"
+     }
+    }
+   },
+   "expect": {
+    "log": {
+     "level": "warn",
+     "timestamp": true
+    },
+    "inbounds": [
+     {
+      "type": "mixed",
+      "tag": "in",
+      "listen": "127.0.0.1",
+      "listen_port": 42815
+     }
+    ],
+    "outbounds": [
+     {
+      "type": "direct",
+      "tag": "direct"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "a1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-A1",
+      "tag": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "a2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-A2",
+      "tag": "A2"
+     },
+     {
+      "type": "socks",
+      "server": "127.0.0.1",
+      "server_port": 42819,
+      "version": "5",
+      "tag": "A0"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "B1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "B2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A1-B1",
+      "detour": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A1-B2",
+      "detour": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A2-B1",
+      "detour": "A2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A2-B2",
+      "detour": "A2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A0-B1",
+      "detour": "A0"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A0-B2",
+      "detour": "A0"
+     },
+     {
+      "type": "selector",
+      "tag": "route",
+      "outbounds": [
+       "A1-B1",
+       "A1-B2",
+       "A2-B1",
+       "A2-B2",
+       "A0-B1",
+       "A0-B2",
+       "B1",
+       "B2",
+       "A1",
+       "A2",
+       "A0"
+      ],
+      "default": "A1-B1"
+     }
+    ],
+    "route": {
+     "rules": [
+      {
+       "ip_is_private": true,
+       "outbound": "direct"
+      }
+     ],
+     "final": "route",
+     "default_domain_resolver": "local"
+    },
+    "experimental": {
+     "clash_api": {
+      "external_controller": "127.0.0.1:42816"
+     }
+    },
+    "dns": {
+     "servers": [
+      {
+       "type": "local",
+       "tag": "local"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "label": "no-suffix/modern=False",
+   "cfg": {
+    "mixed_port": 42815,
+    "api_port": 42816,
+    "private_direct": true,
+    "direct_suffixes": [],
+    "log_level": "warn"
+   },
+   "modern": false,
+   "A": {
+    "A1": {
+     "name": "first",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "a1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-A1"
+     }
+    },
+    "A2": {
+     "name": "second",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "a2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-A2"
+     }
+    },
+    "A0": {
+     "name": "Lantern",
+     "ob": {
+      "type": "socks",
+      "server": "127.0.0.1",
+      "server_port": 42819,
+      "version": "5"
+     }
+    }
+   },
+   "B": {
+    "B1": {
+     "name": "exit1",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1"
+     }
+    },
+    "B2": {
+     "name": "exit2",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2"
+     }
+    }
+   },
+   "expect": {
+    "log": {
+     "level": "warn",
+     "timestamp": true
+    },
+    "inbounds": [
+     {
+      "type": "mixed",
+      "tag": "in",
+      "listen": "127.0.0.1",
+      "listen_port": 42815
+     }
+    ],
+    "outbounds": [
+     {
+      "type": "direct",
+      "tag": "direct"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "a1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-A1",
+      "tag": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "a2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-A2",
+      "tag": "A2"
+     },
+     {
+      "type": "socks",
+      "server": "127.0.0.1",
+      "server_port": 42819,
+      "version": "5",
+      "tag": "A0"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "B1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "B2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A1-B1",
+      "detour": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A1-B2",
+      "detour": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A2-B1",
+      "detour": "A2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A2-B2",
+      "detour": "A2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A0-B1",
+      "detour": "A0"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A0-B2",
+      "detour": "A0"
+     },
+     {
+      "type": "selector",
+      "tag": "route",
+      "outbounds": [
+       "A1-B1",
+       "A1-B2",
+       "A2-B1",
+       "A2-B2",
+       "A0-B1",
+       "A0-B2",
+       "B1",
+       "B2",
+       "A1",
+       "A2",
+       "A0"
+      ],
+      "default": "A1-B1"
+     }
+    ],
+    "route": {
+     "rules": [
+      {
+       "ip_is_private": true,
+       "outbound": "direct"
+      }
+     ],
+     "final": "route"
+    },
+    "experimental": {
+     "clash_api": {
+      "external_controller": "127.0.0.1:42816"
+     }
+    }
+   }
+  },
+  {
+   "label": "two-suffix/modern=True",
+   "cfg": {
+    "mixed_port": 42815,
+    "api_port": 42816,
+    "private_direct": true,
+    "direct_suffixes": [
+     ".ir",
+     ".local"
+    ],
+    "log_level": "warn"
+   },
+   "modern": true,
+   "A": {
+    "A1": {
+     "name": "first",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "a1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-A1"
+     }
+    },
+    "A2": {
+     "name": "second",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "a2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-A2"
+     }
+    },
+    "A0": {
+     "name": "Lantern",
+     "ob": {
+      "type": "socks",
+      "server": "127.0.0.1",
+      "server_port": 42819,
+      "version": "5"
+     }
+    }
+   },
+   "B": {
+    "B1": {
+     "name": "exit1",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1"
+     }
+    },
+    "B2": {
+     "name": "exit2",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2"
+     }
+    }
+   },
+   "expect": {
+    "log": {
+     "level": "warn",
+     "timestamp": true
+    },
+    "inbounds": [
+     {
+      "type": "mixed",
+      "tag": "in",
+      "listen": "127.0.0.1",
+      "listen_port": 42815
+     }
+    ],
+    "outbounds": [
+     {
+      "type": "direct",
+      "tag": "direct"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "a1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-A1",
+      "tag": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "a2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-A2",
+      "tag": "A2"
+     },
+     {
+      "type": "socks",
+      "server": "127.0.0.1",
+      "server_port": 42819,
+      "version": "5",
+      "tag": "A0"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "B1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "B2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A1-B1",
+      "detour": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A1-B2",
+      "detour": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A2-B1",
+      "detour": "A2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A2-B2",
+      "detour": "A2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A0-B1",
+      "detour": "A0"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A0-B2",
+      "detour": "A0"
+     },
+     {
+      "type": "selector",
+      "tag": "route",
+      "outbounds": [
+       "A1-B1",
+       "A1-B2",
+       "A2-B1",
+       "A2-B2",
+       "A0-B1",
+       "A0-B2",
+       "B1",
+       "B2",
+       "A1",
+       "A2",
+       "A0"
+      ],
+      "default": "A1-B1"
+     }
+    ],
+    "route": {
+     "rules": [
+      {
+       "domain_suffix": [
+        ".ir",
+        ".local"
+       ],
+       "outbound": "direct"
+      },
+      {
+       "ip_is_private": true,
+       "outbound": "direct"
+      }
+     ],
+     "final": "route",
+     "default_domain_resolver": "local"
+    },
+    "experimental": {
+     "clash_api": {
+      "external_controller": "127.0.0.1:42816"
+     }
+    },
+    "dns": {
+     "servers": [
+      {
+       "type": "local",
+       "tag": "local"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "label": "two-suffix/modern=False",
+   "cfg": {
+    "mixed_port": 42815,
+    "api_port": 42816,
+    "private_direct": true,
+    "direct_suffixes": [
+     ".ir",
+     ".local"
+    ],
+    "log_level": "warn"
+   },
+   "modern": false,
+   "A": {
+    "A1": {
+     "name": "first",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "a1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-A1"
+     }
+    },
+    "A2": {
+     "name": "second",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "a2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-A2"
+     }
+    },
+    "A0": {
+     "name": "Lantern",
+     "ob": {
+      "type": "socks",
+      "server": "127.0.0.1",
+      "server_port": 42819,
+      "version": "5"
+     }
+    }
+   },
+   "B": {
+    "B1": {
+     "name": "exit1",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1"
+     }
+    },
+    "B2": {
+     "name": "exit2",
+     "ob": {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2"
+     }
+    }
+   },
+   "expect": {
+    "log": {
+     "level": "warn",
+     "timestamp": true
+    },
+    "inbounds": [
+     {
+      "type": "mixed",
+      "tag": "in",
+      "listen": "127.0.0.1",
+      "listen_port": 42815
+     }
+    ],
+    "outbounds": [
+     {
+      "type": "direct",
+      "tag": "direct"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "a1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-A1",
+      "tag": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "a2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-A2",
+      "tag": "A2"
+     },
+     {
+      "type": "socks",
+      "server": "127.0.0.1",
+      "server_port": 42819,
+      "version": "5",
+      "tag": "A0"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "B1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "B2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A1-B1",
+      "detour": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A1-B2",
+      "detour": "A1"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A2-B1",
+      "detour": "A2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A2-B2",
+      "detour": "A2"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b1.example.com",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pw-B1",
+      "tag": "A0-B1",
+      "detour": "A0"
+     },
+     {
+      "type": "shadowsocks",
+      "server": "b2.example.com",
+      "server_port": 8389,
+      "method": "aes-128-gcm",
+      "password": "pw-B2",
+      "tag": "A0-B2",
+      "detour": "A0"
+     },
+     {
+      "type": "selector",
+      "tag": "route",
+      "outbounds": [
+       "A1-B1",
+       "A1-B2",
+       "A2-B1",
+       "A2-B2",
+       "A0-B1",
+       "A0-B2",
+       "B1",
+       "B2",
+       "A1",
+       "A2",
+       "A0"
+      ],
+      "default": "A1-B1"
+     }
+    ],
+    "route": {
+     "rules": [
+      {
+       "domain_suffix": [
+        ".ir",
+        ".local"
+       ],
+       "outbound": "direct"
+      },
+      {
+       "ip_is_private": true,
+       "outbound": "direct"
+      }
+     ],
+     "final": "route"
+    },
+    "experimental": {
+     "clash_api": {
+      "external_controller": "127.0.0.1:42816"
+     }
+    }
+   }
+  }
+ ],
+ "geo": [
+  {
+   "body": "{\"ip\":\"1.2.3.4\",\"country\":\"DE\",\"org\":\"AS1 Foo\"}",
+   "expect": {
+    "ip": "1.2.3.4",
+    "cc": "DE",
+    "org": "AS1 Foo"
+   }
+  },
+  {
+   "body": "{\"ip\":\"5.6.7.8\",\"country\":\"nl\"}",
+   "expect": {
+    "ip": "5.6.7.8",
+    "cc": "NL",
+    "org": ""
+   }
+  },
+  {
+   "body": "{\"query\":\"9.9.9.9\",\"countryCode\":\"US\",\"isp\":\"ISP Inc\"}",
+   "expect": {
+    "ip": "9.9.9.9",
+    "cc": "US",
+    "org": "ISP Inc"
+   }
+  },
+  {
+   "body": "{\"ip\":\"2.2.2.2\",\"country_code\":\"FR\",\"connection\":{\"org\":\"Conn Org\"}}",
+   "expect": {
+    "ip": "2.2.2.2",
+    "cc": "FR",
+    "org": "Conn Org"
+   }
+  },
+  {
+   "body": "{\"ip\":\"3.3.3.3\",\"country\":\"Germany\"}",
+   "expect": {
+    "ip": "3.3.3.3",
+    "cc": null,
+    "org": ""
+   }
+  },
+  {
+   "body": "{\"country\":\"DE\"}",
+   "expect": null
+  },
+  {
+   "body": "{\"ip\":\"4.4.4.4\",\"country\":\"IR\",\"org\":null}",
+   "expect": {
+    "ip": "4.4.4.4",
+    "cc": "IR",
+    "org": ""
+   }
+  },
+  {
+   "body": "not json",
+   "expect": null
+  }
+ ],
+ "google": [
+  {
+   "body": "...x%.@.\\\"IR\\\",\\\"ZZ\\\"...",
+   "expect": "IR"
+  },
+  {
+   "body": "...x%.@.\\\"US\\\",\\\"ZZ\\\"...",
+   "expect": "US"
+  },
+  {
+   "body": "no marker here",
+   "expect": null
+  },
+  {
+   "body": "%.@.\\\"ir\\\",\\\"ZZ\\\"",
+   "expect": null
+  },
+  {
+   "body": "",
+   "expect": null
+  },
+  {
+   "body": "...x%.@.\\\"DE\\\",\\\"ZZ\\\"......x%.@.\\\"IR\\\",\\\"ZZ\\\"...",
+   "expect": "DE"
+  }
+ ],
+ "rank": [
+  {
+   "label": "tiers",
+   "rank_by_speed": false,
+   "tiers": {
+    "A0": 1,
+    "A1": 2,
+    "A2": 2,
+    "A101": 3,
+    "B1": 1,
+    "B2": 1,
+    "B3": 1,
+    "B101": 2
+   },
+   "A": [
+    "A0",
+    "A1",
+    "A2",
+    "A101"
+   ],
+   "B": [
+    "B1",
+    "B2",
+    "B3",
+    "B101"
+   ],
+   "delays": {
+    "A0-B1": 345.5,
+    "A0-B2": 203.7,
+    "A0-B3": 613.8,
+    "A0-B101": 139.4,
+    "A1-B1": 519.4,
+    "A1-B2": null,
+    "A1-B3": 127.6,
+    "A1-B101": 496.1,
+    "A2-B1": 110.7,
+    "A2-B2": 435.6,
+    "A2-B3": 137.3,
+    "A2-B101": 154.4,
+    "A101-B1": 428.1,
+    "A101-B2": 758.0,
+    "A101-B3": 181.5,
+    "A101-B101": 263.1,
+    "A0": 594.5,
+    "A1": 857.1,
+    "A2": 553.2,
+    "A101": null,
+    "B1": 880.5,
+    "B2": 118.2,
+    "B3": null,
+    "B101": 317.5
+   },
+   "expect": [
+    "A0-B2",
+    "A0-B1",
+    "A0-B3",
+    "A0-B101",
+    "A2-B1",
+    "A1-B3",
+    "A2-B3",
+    "A2-B2",
+    "A1-B1",
+    "A2-B101",
+    "A1-B101",
+    "A101-B3",
+    "A101-B1",
+    "A101-B2",
+    "A101-B101",
+    "B2",
+    "B1",
+    "B101",
+    "A0",
+    "A2",
+    "A1"
+   ]
+  },
+  {
+   "label": "speed",
+   "rank_by_speed": true,
+   "tiers": {
+    "A0": 1,
+    "A1": 2,
+    "A2": 2,
+    "A101": 3,
+    "B1": 1,
+    "B2": 1,
+    "B3": 1,
+    "B101": 2
+   },
+   "A": [
+    "A0",
+    "A1",
+    "A2",
+    "A101"
+   ],
+   "B": [
+    "B1",
+    "B2",
+    "B3",
+    "B101"
+   ],
+   "delays": {
+    "A0-B1": 345.5,
+    "A0-B2": 203.7,
+    "A0-B3": 613.8,
+    "A0-B101": 139.4,
+    "A1-B1": 519.4,
+    "A1-B2": null,
+    "A1-B3": 127.6,
+    "A1-B101": 496.1,
+    "A2-B1": 110.7,
+    "A2-B2": 435.6,
+    "A2-B3": 137.3,
+    "A2-B101": 154.4,
+    "A101-B1": 428.1,
+    "A101-B2": 758.0,
+    "A101-B3": 181.5,
+    "A101-B101": 263.1,
+    "A0": 594.5,
+    "A1": 857.1,
+    "A2": 553.2,
+    "A101": null,
+    "B1": 880.5,
+    "B2": 118.2,
+    "B3": null,
+    "B101": 317.5
+   },
+   "expect": [
+    "A2-B1",
+    "B2",
+    "A1-B3",
+    "A2-B3",
+    "A0-B101",
+    "A2-B101",
+    "A101-B3",
+    "A0-B2",
+    "A101-B101",
+    "B101",
+    "A0-B1",
+    "A101-B1",
+    "A2-B2",
+    "A1-B101",
+    "A1-B1",
+    "A2",
+    "A0",
+    "A0-B3",
+    "A101-B2",
+    "A1",
+    "B1"
+   ]
+  },
+  {
+   "label": "only-A",
+   "rank_by_speed": false,
+   "tiers": {
+    "A1": 2,
+    "A2": 2
+   },
+   "A": [
+    "A1",
+    "A2"
+   ],
+   "B": [],
+   "delays": {
+    "A1": 300.0,
+    "A2": 120.0
+   },
+   "expect": [
+    "A2",
+    "A1"
+   ]
+  }
+ ],
+ "verify": [
+  {
+   "label": "all-good",
+   "blocked_countries": [
+    "IR"
+   ],
+   "strict_urls": [
+    "https://gemini.google.com"
+   ],
+   "geo": [
+    "1.2.3.4",
+    "DE",
+    "AS1 Foo"
+   ],
+   "sites": {
+    "https://gemini.google.com": {
+     "status": 200,
+     "body": "...x%.@.\\\"DE\\\",\\\"ZZ\\\"..."
+    }
+   },
+   "expect": [
+    true,
+    "1.2.3.4 DE AS1 Foo"
+   ]
+  },
+  {
+   "label": "blocked-exit",
+   "blocked_countries": [
+    "IR"
+   ],
+   "strict_urls": [
+    "https://gemini.google.com"
+   ],
+   "geo": [
+    "5.6.7.8",
+    "IR",
+    "AS2"
+   ],
+   "sites": {
+    "https://gemini.google.com": {
+     "status": 200,
+     "body": ""
+    }
+   },
+   "expect": [
+    false,
+    "exit in blocked country (5.6.7.8 IR AS2)"
+   ]
+  },
+  {
+   "label": "gemini-403",
+   "blocked_countries": [
+    "IR"
+   ],
+   "strict_urls": [
+    "https://gemini.google.com"
+   ],
+   "geo": [
+    "1.2.3.4",
+    "DE",
+    ""
+   ],
+   "sites": {
+    "https://gemini.google.com": {
+     "status": 403,
+     "body": ""
+    }
+   },
+   "expect": [
+    false,
+    "https://gemini.google.com -> 403 (1.2.3.4 DE)"
+   ]
+  },
+  {
+   "label": "gemini-none",
+   "blocked_countries": [
+    "IR"
+   ],
+   "strict_urls": [
+    "https://gemini.google.com"
+   ],
+   "geo": [
+    "1.2.3.4",
+    "DE",
+    ""
+   ],
+   "sites": {
+    "https://gemini.google.com": {
+     "status": null,
+     "body": ""
+    }
+   },
+   "expect": [
+    false,
+    "https://gemini.google.com -> no answer (1.2.3.4 DE)"
+   ]
+  },
+  {
+   "label": "google-says-IR",
+   "blocked_countries": [
+    "IR"
+   ],
+   "strict_urls": [
+    "https://gemini.google.com"
+   ],
+   "geo": [
+    "1.2.3.4",
+    "DE",
+    "x"
+   ],
+   "sites": {
+    "https://gemini.google.com": {
+     "status": 200,
+     "body": "...x%.@.\\\"IR\\\",\\\"ZZ\\\"..."
+    }
+   },
+   "expect": [
+    false,
+    "https://gemini.google.com -> Google places this exit in IR (location not supported) (1.2.3.4 DE x)"
+   ]
+  },
+  {
+   "label": "google-says-US",
+   "blocked_countries": [
+    "IR"
+   ],
+   "strict_urls": [
+    "https://gemini.google.com"
+   ],
+   "geo": [
+    "1.2.3.4",
+    "NL",
+    "x"
+   ],
+   "sites": {
+    "https://gemini.google.com": {
+     "status": 200,
+     "body": "...x%.@.\\\"US\\\",\\\"ZZ\\\"..."
+    }
+   },
+   "expect": [
+    true,
+    "1.2.3.4 NL x"
+   ]
+  },
+  {
+   "label": "no-geo",
+   "blocked_countries": [
+    "IR"
+   ],
+   "strict_urls": [
+    "https://gemini.google.com"
+   ],
+   "geo": null,
+   "sites": {
+    "https://gemini.google.com": {
+     "status": 200,
+     "body": "ok"
+    }
+   },
+   "expect": [
+    true,
+    "exit IP unknown"
+   ]
+  },
+  {
+   "label": "geo-no-country",
+   "blocked_countries": [
+    "IR"
+   ],
+   "strict_urls": [
+    "https://gemini.google.com"
+   ],
+   "geo": [
+    "1.2.3.4",
+    null,
+    "org"
+   ],
+   "sites": {
+    "https://gemini.google.com": {
+     "status": 200,
+     "body": "ok"
+    }
+   },
+   "expect": [
+    true,
+    "1.2.3.4 ?? org"
+   ]
+  },
+  {
+   "label": "two-sites",
+   "blocked_countries": [
+    "IR"
+   ],
+   "strict_urls": [
+    "https://gemini.google.com",
+    "https://example.com"
+   ],
+   "geo": [
+    "1.2.3.4",
+    "DE",
+    ""
+   ],
+   "sites": {
+    "https://gemini.google.com": {
+     "status": 200,
+     "body": "...x%.@.\\\"DE\\\",\\\"ZZ\\\"..."
+    },
+    "https://example.com": {
+     "status": 500,
+     "body": ""
+    }
+   },
+   "expect": [
+    false,
+    "https://example.com -> 500 (1.2.3.4 DE)"
+   ]
+  },
+  {
+   "label": "lowercase-blocked",
+   "blocked_countries": [
+    "ir",
+    "ru"
+   ],
+   "strict_urls": [
+    "https://gemini.google.com"
+   ],
+   "geo": [
+    "1.1.1.1",
+    "RU",
+    "o"
+   ],
+   "sites": {
+    "https://gemini.google.com": {
+     "status": 200,
+     "body": ""
+    }
+   },
+   "expect": [
+    false,
+    "exit in blocked country (1.1.1.1 RU o)"
+   ]
+  },
+  {
+   "label": "no-strict",
+   "blocked_countries": [
+    "IR"
+   ],
+   "strict_urls": [],
+   "geo": [
+    "1.2.3.4",
+    "DE",
+    "o"
+   ],
+   "sites": {},
+   "expect": [
+    true,
+    "1.2.3.4 DE o"
+   ]
+  },
+  {
+   "label": "non-gemini-with-marker",
+   "blocked_countries": [
+    "IR"
+   ],
+   "strict_urls": [
+    "https://example.com"
+   ],
+   "geo": [
+    "1.2.3.4",
+    "DE",
+    "o"
+   ],
+   "sites": {
+    "https://example.com": {
+     "status": 200,
+     "body": "...x%.@.\\\"IR\\\",\\\"ZZ\\\"..."
+    }
+   },
+   "expect": [
+    true,
+    "1.2.3.4 DE o"
+   ]
+  }
+ ]
+}
