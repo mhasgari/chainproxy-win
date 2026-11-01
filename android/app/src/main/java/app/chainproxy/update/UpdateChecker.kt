@@ -15,6 +15,8 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import java.net.HttpURLConnection
+import java.net.InetSocketAddress
+import java.net.Proxy
 import java.net.URL
 import java.security.MessageDigest
 
@@ -69,9 +71,10 @@ object UpdateChecker {
     private fun JsonObject.name() = this["name"]?.jsonPrimitive?.contentOrNull.orEmpty()
     private fun JsonObject.url() = this["browser_download_url"]?.jsonPrimitive?.contentOrNull.orEmpty()
 
-    private fun get(url: String): ByteArray {
-        val c = URL(url).openConnection() as HttpURLConnection
-        c.connectTimeout = 20000; c.readTimeout = 60000
+    private fun open(url: String, proxy: Proxy?): ByteArray {
+        val c = (if (proxy != null) URL(url).openConnection(proxy) else URL(url).openConnection()) as HttpURLConnection
+        c.connectTimeout = if (proxy != null) 4000 else 20000
+        c.readTimeout = 60000
         c.setRequestProperty("User-Agent", "chainproxy-android")
         c.setRequestProperty("Accept", "application/vnd.github+json")
         try {
@@ -80,16 +83,32 @@ object UpdateChecker {
         } finally { c.disconnect() }
     }
 
-    suspend fun check(repo: String, current: String, api: String = "https://api.github.com/repos/${repo.ifEmpty { DEFAULT_REPO }}/releases?per_page=30"): Result<Info?> =
-        withContext(Dispatchers.IO) { runCatching { pick(get(api).toString(Charsets.UTF_8), current, android.os.Build.SUPPORTED_ABIS.toList()) } }
+    /**
+     * GitHub is often unreachable without a proxy. The app itself is excluded from its own VPN, so a plain request goes out
+     * directly; when Chain Proxy is connected its local proxy port ([proxyPort]) carries the request through the chain.
+     * That is tried first (it fails fast when nothing listens there), then the direct connection.
+     */
+    private fun get(url: String, proxyPort: Int?): ByteArray {
+        if (proxyPort != null) {
+            try { return open(url, Proxy(Proxy.Type.HTTP, InetSocketAddress("127.0.0.1", proxyPort))) } catch (e: Exception) { /* not running: go direct */ }
+        }
+        return open(url, null)
+    }
 
-    suspend fun downloadAndInstall(ctx: Context, info: Info, progress: (String) -> Unit) = withContext(Dispatchers.IO) {
+    suspend fun check(
+        repo: String, current: String,
+        api: String = "https://api.github.com/repos/${repo.ifEmpty { DEFAULT_REPO }}/releases?per_page=30",
+        proxyPort: Int? = null, abis: List<String> = android.os.Build.SUPPORTED_ABIS.toList(),
+    ): Result<Info?> =
+        withContext(Dispatchers.IO) { runCatching { pick(get(api, proxyPort).toString(Charsets.UTF_8), current, abis) } }
+
+    suspend fun downloadAndInstall(ctx: Context, info: Info, proxyPort: Int? = null, progress: (String) -> Unit) = withContext(Dispatchers.IO) {
         try {
             progress("Downloading ...")
             val dir = File(ctx.cacheDir, "updates").apply { deleteRecursively(); mkdirs() }
             val apk = File(dir, "update.apk")
-            apk.writeBytes(get(info.apkUrl))
-            val want = info.sha256Url?.let { get(it).toString(Charsets.UTF_8).trim().split(Regex("\\s+")).first().lowercase() }
+            apk.writeBytes(get(info.apkUrl, proxyPort))
+            val want = info.sha256Url?.let { get(it, proxyPort).toString(Charsets.UTF_8).trim().split(Regex("\\s+")).first().lowercase() }
             val got = MessageDigest.getInstance("SHA-256").digest(apk.readBytes()).joinToString("") { "%02x".format(it) }
             if (want == null) throw IllegalStateException("the release has no .sha256 file")
             if (want != got) { apk.delete(); throw IllegalStateException("checksum mismatch") }

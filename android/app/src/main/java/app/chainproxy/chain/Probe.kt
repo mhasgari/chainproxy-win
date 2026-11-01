@@ -28,20 +28,28 @@ suspend fun tcpMs(ob: JsonObject, timeoutSec: Double): Double? {
 /**
  * Port of chain.pick: the [k] fastest reachable nodes, tagged prefix+number. When direct probing is filtered (no node
  * answers) all nodes are kept and the end-to-end test decides. [validator] drops nodes the core refuses to load.
+ * [extraUnreachable] (Android): that many nodes whose direct probe FAILED are kept after the reachable ones. A node behind
+ * a first hop (Lantern) is dialled from that hop's server, so the phone not reaching it directly says nothing about the chain.
+ * [note] receives (reachable, kept as unreachable) for the log.
  */
 suspend fun pick(
     nodes: List<Node>, k: Int, timeoutSec: Double, prefix: String, start: Int = 1,
     probe: suspend (Node) -> Double? = { tcpMs(it.ob, timeoutSec) },
     validator: ((Node) -> Boolean)? = null,
+    extraUnreachable: Int = 0,
+    note: (reachable: Int, extra: Int) -> Unit = { _, _ -> },
 ): LinkedHashMap<String, Node> {
     val ms = coroutineScope { nodes.map { n -> async { probe(n) } }.awaitAll() }
     val scored = nodes.zip(ms).filter { it.second != null }.sortedBy { it.second }.map { it.first }
     val ordered = scored.ifEmpty { nodes }
-    var chosen = ordered.take(k)
+    val tail = if (scored.isEmpty()) emptyList() else nodes.zip(ms).filter { it.second == null }.map { it.first }.take(extraUnreachable)
+    var chosen = ordered.take(k) + tail
     if (validator != null) {
-        val good = ordered.take(maxOf(k * 3, k)).filter(validator)
-        if (good.isNotEmpty()) chosen = good.take(k)
+        val good = ordered.take(maxOf(k * 3, k)).filter(validator).take(k)
+        val goodTail = tail.filter(validator)
+        if (good.isNotEmpty() || goodTail.isNotEmpty()) chosen = good + goodTail
     }
+    note(scored.size, tail.size)
     val out = LinkedHashMap<String, Node>()
     chosen.forEachIndexed { i, n -> out["$prefix${start + i}"] = n }
     return out

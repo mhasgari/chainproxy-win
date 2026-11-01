@@ -9,13 +9,13 @@ The user writes in Persian. Answer in Persian; keep code, comments, UI strings a
 messages in English (Windows consoles mangle RTL text). End-user and developer docs are
 Persian (`docs/`, `dev/README.md`).
 
-## Verified state (2026-11-01; desktop 1.3.2, Android 0.2.1)
+## Verified state (2026-11-01; desktop 1.3.2, Android 0.2.5)
 Desktop: `make check` PASS (lint, 42 unit, 13 dev-tool, GUI smoke on Xvfb incl. collapsed log, local e2e). Windows 11 VM: deploy,
 install, unit (42), e2e (real sing-box) PASS, `vm-installer-full` PASS; the VM GUI stage was SKIPPED (the VM desktop sat at the lock
 screen and logging in needs the user's password) so the 1.3.2 window changes (flat status text, collapsed log, hand cursor) were
 checked under Tk on Linux only. Not yet verified: Chrome itself, a Windows 10 VM, a clean-machine first run without `offline/`.
 Android: 18 JVM tests, emulator lab session + TUN tests PASS (x86_64 debug), real Lantern on the emulator; 0.1 was tested on the
-user's real phone (worked), 0.2.0 was also tested on the phone (works, incl. finding the tile); 0.2.1 (tile icon, no duplicate hint) only on the emulator.
+user's real phone (worked), 0.2.0 was also tested on the phone (works, incl. finding the tile); 0.2.1 (tile icon, no duplicate hint) only on the emulator; 0.2.2 (verification used a pooled keep-alive tunnel, so every route was judged by the first route's exit) tested on the phone (works; first attempt still failed on a noisy network); 0.2.3 (auto-rescan x2 when nothing passes, one retry when Google gives no answer) on the phone: still failed on the first start sometimes; 0.2.4 (works on the phone; exit nodes the phone cannot reach directly are kept for the chain test) only on the emulator, where all 30 nodes are reachable so that path is covered by PickTest only; 0.2.5 (clear-log button, LTR auto-scrolling log, update check/download through the local proxy first + update-source field) only on the emulator.
 
 ## Codebase index (codebase-memory-mcp) - use it first
 This project is indexed as `home-hadi-projects-chainproxy-win` (git-watch keeps it fresh; re-index with

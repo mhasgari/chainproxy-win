@@ -94,7 +94,12 @@ class SessionRunner(
         val t = cfg.tcpTimeout
         val aS = if (aNodes.isNotEmpty()) pick(aNodes, cfg.topK, t, "A", validator = ::valid) else emptyMap()
         val aP = if (profA.isNotEmpty()) pick(profA, cfg.topKProfiles, t, "A", start = 101, validator = ::valid) else emptyMap()
-        val bS = if (bNodes.isNotEmpty()) pick(bNodes, cfg.topKExit, t, "B", validator = ::valid) else emptyMap()
+        // With a first hop the exit nodes are dialled from ITS server: keep some the phone cannot reach directly.
+        val hasFirstHop = cfg.lanternEnabled || aNodes.isNotEmpty() || profA.isNotEmpty()
+        val bS = if (bNodes.isNotEmpty()) pick(bNodes, cfg.topKExit, t, "B", validator = ::valid,
+            extraUnreachable = if (hasFirstHop) cfg.topKExit else 0,
+            note = { ok, extra -> log("[B] $ok of ${bNodes.size} reachable directly; $extra more kept for the chain test") })
+        else emptyMap()
         val bP = if (profB.isNotEmpty()) pick(profB, cfg.topKProfiles, t, "B", start = 101, validator = ::valid) else emptyMap()
         val a = LinkedHashMap<String, Node>()
         val b = LinkedHashMap<String, Node>()
@@ -122,8 +127,15 @@ class SessionRunner(
         routes = rm
         scope.launch { rm.rows.collect { AppState.setRows(it) } }
         rm.buildRank()
-        val msg = rm.go(1)
+        var msg = rm.go(1)
         log(msg)
+        // Scans on a phone network are noisy (delay tests time out, Google answers slowly): look again before giving up.
+        for (attempt in 1..AUTO_RESCANS) {
+            if (rm.idx >= 0 || !scope.isActive) break
+            log("nothing usable yet, scanning again ($attempt/$AUTO_RESCANS) ...")
+            msg = rm.rescan()
+            log(msg)
+        }
         if (rm.idx < 0) return msg
         AppState.setSummary(msg)
         scope.launch { watchdog(rm) }
@@ -154,5 +166,9 @@ class SessionRunner(
         lantern = null
         routes = null
         AppState.clear()
+    }
+
+    private companion object {
+        const val AUTO_RESCANS = 2
     }
 }

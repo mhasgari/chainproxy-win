@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.FactCheck
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Login
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.PowerSettingsNew
@@ -56,6 +58,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,10 +73,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.chainproxy.BuildConfig
@@ -232,12 +238,22 @@ fun LogScreen() {
     val lines by AppState.log.collectAsState()
     val ctx = LocalContext.current
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        FilledTonalButton(onClick = {
-            (ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("log", lines.joinToString("\n")))
-        }) { Icon(Icons.Filled.ContentCopy, null, Modifier.size(18.dp)); Spacer(Modifier.size(8.dp)); Text(stringResource(R.string.copy_log)) }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            FilledTonalButton(onClick = {
+                (ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("log", lines.joinToString("\n")))
+            }) { Icon(Icons.Filled.ContentCopy, null, Modifier.size(18.dp)); Spacer(Modifier.size(8.dp)); Text(stringResource(R.string.copy_log)) }
+            OutlinedButton(onClick = { AppState.clearLog() }, enabled = lines.isNotEmpty()) {
+                Icon(Icons.Filled.Delete, null, Modifier.size(18.dp)); Spacer(Modifier.size(8.dp)); Text(stringResource(R.string.clear_log))
+            }
+        }
         Card(Modifier.fillMaxSize(), shape = MaterialTheme.shapes.medium, colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A))) {
-            LazyColumn(Modifier.fillMaxSize().padding(12.dp)) {
-                itemsIndexed(lines) { _, l -> Text(l, fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = Color(0xFFD1D9E6)) }
+            val listState = rememberLazyListState()
+            LaunchedEffect(lines.size) { if (lines.isNotEmpty()) listState.scrollToItem(lines.lastIndex) }   // follow the newest line
+            // log lines are English and start with a time stamp: keep them left-to-right in the Persian UI too
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                LazyColumn(Modifier.fillMaxSize().padding(12.dp), state = listState) {
+                    itemsIndexed(lines) { _, l -> Text(l, fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = Color(0xFFD1D9E6)) }
+                }
             }
         }
     }
@@ -296,6 +312,10 @@ fun SettingsScreen() {
             }
             if (cfg.splitMode != "all") OutlinedButton(onClick = { picking = true }) { Text(stringResource(R.string.choose_apps, cfg.splitApps.size)) }
         }
+        SectionCard(Icons.Filled.Info, stringResource(R.string.update_source), stringResource(R.string.update_source_hint)) {
+            OutlinedTextField(cfg.updateRepo, { edit(cfg.copy(updateRepo = it.trim())) }, full,
+                label = { Text("owner/name") }, singleLine = true, shape = MaterialTheme.shapes.medium)
+        }
         Button(onClick = { ConfigStore.save(ctx, cfg); saved = true }, full.height(52.dp), shape = MaterialTheme.shapes.large) { Text(stringResource(R.string.save)) }
         if (saved) Text(stringResource(R.string.saved), color = Ok, style = MaterialTheme.typography.bodyMedium)
         SectionCard(Icons.Filled.Info, stringResource(R.string.about), "Chain Proxy ${BuildConfig.VERSION_NAME}") {
@@ -304,7 +324,7 @@ fun SettingsScreen() {
                 scope.launch {
                     updateText = "..."
                     updateInfo = null
-                    UpdateChecker.check(cfg.updateRepo, BuildConfig.VERSION_NAME).fold(
+                    UpdateChecker.check(cfg.updateRepo, BuildConfig.VERSION_NAME, proxyPort = cfg.mixedPort).fold(
                         { info ->
                             updateInfo = info
                             updateText = if (info == null) ctx.getString(R.string.update_none) else ctx.getString(R.string.update_found, info.version)
@@ -314,7 +334,7 @@ fun SettingsScreen() {
             }) { Text(stringResource(R.string.update_check)) }
             if (updateText.isNotEmpty()) Text(updateText, style = MaterialTheme.typography.bodyMedium)
             updateInfo?.let { info ->
-                Button(onClick = { scope.launch { UpdateChecker.downloadAndInstall(ctx, info) { updateText = it } } }) { Text(stringResource(R.string.update_install)) }
+                Button(onClick = { scope.launch { UpdateChecker.downloadAndInstall(ctx, info, proxyPort = cfg.mixedPort) { updateText = it } } }) { Text(stringResource(R.string.update_install)) }
             }
         }
     }

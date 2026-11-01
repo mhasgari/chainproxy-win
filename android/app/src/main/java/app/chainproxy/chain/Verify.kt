@@ -46,6 +46,8 @@ object RealVerifyIo : VerifyIo {
                     c.readTimeout = timeoutSec * 1000
                     c.instanceFollowRedirects = false
                     c.setRequestProperty("User-Agent", USER_AGENT)
+                    // a pooled keep-alive tunnel would stay on the route that was active when it was opened
+                    c.setRequestProperty("Connection", "close")
                     try {
                         val code = c.responseCode
                         if (code in 301..308 && code != 304 && code != 305 && code != 306) {
@@ -128,8 +130,11 @@ suspend fun verify(cfg: ChainConfig, io: VerifyIo = RealVerifyIo): Pair<Boolean,
     val geoD = if (cfg.geoUrl.isNotEmpty()) async { io.geoLookup(cfg) } else null
     val sitesD = strict.map { u ->
         u to async {
-            if ("gemini.google" in u) io.viaProxy(u, cfg.mixedPort, cfg.verifyTimeout, 300000, GOOGLE_COUNTRY)
-            else io.viaProxy(u, cfg.mixedPort, cfg.verifyTimeout)
+            suspend fun fetch() =
+                if ("gemini.google" in u) io.viaProxy(u, cfg.mixedPort, cfg.verifyTimeout, 300000, GOOGLE_COUNTRY)
+                else io.viaProxy(u, cfg.mixedPort, cfg.verifyTimeout)
+            // a double-hop route sometimes just answers slowly once: one more try before the route is judged dead
+            fetch().let { if (it.status == null) fetch() else it }
         }
     }
     val geo = geoD?.await()

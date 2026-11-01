@@ -43,6 +43,9 @@
     <string name="update_install">دانلود و نصب</string>
     <string name="update_failed">بررسی نسخه ناموفق بود: %1$s</string>
     <string name="copy_log">کپی گزارش</string>
+    <string name="clear_log">پاک‌کردن گزارش</string>
+    <string name="update_source">منبع به‌روزرسانی</string>
+    <string name="update_source_hint">اختیاری: مخزنی با همان ساختار انتشار. وقتی Chain Proxy وصل است، به‌روزرسانی از راه خود آن انجام می‌شود.</string>
     <string name="vpn_needed">برای عبور ترافیک، مجوز VPN لازم است.</string>
     <string name="tile_label">Chain Proxy</string>
     <string name="license_note">نرم‌افزار آزاد، GPL-3.0-or-later (شامل اجزای sing-box و Lantern).</string>

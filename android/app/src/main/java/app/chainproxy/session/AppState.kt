@@ -31,6 +31,8 @@ object AppState {
         android.util.Log.i("ChainSession", line)
     }
 
+    fun clearLog() { _log.value = emptyList() }
+
     fun clear() { _rows.value = emptyList(); _summary.value = ""; _lantern.value = "off" }
 }
 

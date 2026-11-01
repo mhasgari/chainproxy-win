@@ -44,6 +44,9 @@
     <string name="update_install">Download and install</string>
     <string name="update_failed">Update check failed: %1$s</string>
     <string name="copy_log">Copy log</string>
+    <string name="clear_log">Clear log</string>
+    <string name="update_source">Update source</string>
+    <string name="update_source_hint">Optional: a repository with the same release layout. Updates go through Chain Proxy itself when it is connected.</string>
     <string name="vpn_needed">The VPN permission is needed to route the traffic.</string>
     <string name="tile_label">Chain Proxy</string>
     <string name="license_note">Free software, GPL-3.0-or-later (includes sing-box and Lantern components).</string>
